@@ -34,12 +34,25 @@ const $ = <T extends HTMLElement = HTMLElement>(sel: string) =>
 let rows: ResultRow[] = [];
 let view: TableViewState = { ...DEFAULT_VIEW };
 
-// --- Port 接続 -----------------------------------------------------------
-const port = chrome.runtime.connect({ name: 'ana-panel' });
-port.onMessage.addListener((msg: SwToPanelMessage) => handleSw(msg));
-function sendSw(msg: PanelToSwMessage): void {
-  port.postMessage(msg);
+// --- Port 接続 (サービスワーカー再起動で切れても自動再接続) ---------------
+let port: chrome.runtime.Port | null = null;
+function connectPanel(): chrome.runtime.Port {
+  const p = chrome.runtime.connect({ name: 'ana-panel' });
+  p.onMessage.addListener((msg: SwToPanelMessage) => handleSw(msg));
+  p.onDisconnect.addListener(() => { port = null; });
+  port = p;
+  return p;
 }
+function sendSw(msg: PanelToSwMessage): void {
+  try {
+    (port ?? connectPanel()).postMessage(msg);
+  } catch {
+    // ポートが死んでいたら張り直して再送
+    port = connectPanel();
+    try { port.postMessage(msg); } catch { /* noop */ }
+  }
+}
+connectPanel();
 
 function handleSw(msg: SwToPanelMessage): void {
   switch (msg.type) {
@@ -164,7 +177,8 @@ function stateLabel(s: SweepProgress['state']): string {
 function syncButtons(state: SweepProgress['state']): void {
   const running = state === 'running';
   const resumable = state === 'paused' || state === 'blocked';
-  ($('#btn-start') as HTMLButtonElement).disabled = running;
+  // 開始は常に押せる (新規スイープは既存を停止してから開始する)
+  ($('#btn-start') as HTMLButtonElement).disabled = false;
   ($('#btn-pause') as HTMLButtonElement).disabled = !running;
   ($('#btn-resume') as HTMLButtonElement).disabled = !resumable;
   ($('#btn-cancel') as HTMLButtonElement).disabled = !running && !resumable;

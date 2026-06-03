@@ -138,6 +138,13 @@ function makeLegacyHooks(): LegacyHooks {
 
 // --- スイープ制御 --------------------------------------------------------
 async function startSweep(config: SweepConfig): Promise<void> {
+  console.info('[ana-sweep:sw] START_SWEEP', config.type, config.depart, '→', config.dest);
+  // 既存スイープを確実に停止してから新規開始 (タイマー・コントローラを破棄)
+  if (legacyTimer) { clearTimeout(legacyTimer); legacyTimer = null; }
+  orchestrator?.cancel();
+  legacy?.cancel();
+  orchestrator = null;
+  legacy = null;
   await clearRows();
   if (usesLegacy(config)) {
     orchestrator = null;
