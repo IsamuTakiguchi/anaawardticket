@@ -52,6 +52,20 @@ function flightNoOf(detail: Element | null): string {
   return '';
 }
 
+/** 運航航空会社名を取り出す ("ユナイテッド航空運航"→"ユナイテッド航空", ANA運航便アイコン→"ANA") */
+function carrierNameOf(detail: Element | null): string {
+  // 「○○運航」テキスト (提携便・ANAウイングス等。より具体的なので優先)
+  for (const el of Array.from(detail?.querySelectorAll('a, span') ?? [])) {
+    const t = text(el);
+    const m = /^(.+?)運航$/.exec(t);
+    if (m && m[1]) return m[1];
+  }
+  // ANA運航便 / スターアライアンス加盟航空会社便 アイコンの alt
+  const img = detail?.querySelector('img[alt$="運航便"]');
+  if (img) return (img.getAttribute('alt') ?? '').replace(/運航便$/, '');
+  return '';
+}
+
 /** 1 つの .itinModeAvailabilityResult から Itinerary を作る */
 function parseItinerary(
   el: Element,
@@ -82,6 +96,7 @@ function parseItinerary(
     segments.push({
       marketingCarrier: carrier,
       operatingCarrier: carrier,
+      carrierName: carrierNameOf(detail),
       flightNumber: flightNo.replace(/^[A-Z]{2}/, ''),
       depAirport,
       arrAirport,
@@ -106,25 +121,45 @@ const NUM = (s: string) => {
   return Number.isFinite(n) ? n : 0;
 };
 
-/** 埋め込みJSの addRecommendation(...) を抽出 */
+/**
+ * addFormatedRecommendation(...) から表示用の税金・料金(円)を順番に抽出する。
+ * 例: 引数中の '0円～' / '15,400円～' → 0 / 15400。addRecommendation と同順で対応。
+ */
+function parseFormattedTax(scriptText: string): number[] {
+  const out: number[] = [];
+  const re = /addFormatedRecommendation\(([\s\S]*?)\);/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(scriptText)) !== null) {
+    const yen = /([\d,]+)\s*円/.exec(m[1]);
+    out.push(yen ? NUM(yen[1]) : 0);
+  }
+  return out;
+}
+
+/** 埋め込みJSの addRecommendation(...) を抽出 (税金は表示文字列を優先) */
 function parseRecommendations(scriptText: string): Recommendation[] {
+  const formattedTax = parseFormattedTax(scriptText);
   const recs: Recommendation[] = [];
   const re = /addRecommendation\(([\s\S]*?)\);/g;
   let m: RegExpExecArray | null;
+  let i = 0;
   while ((m = re.exec(scriptText)) !== null) {
     const argsStr = m[1];
     // segmentInfoList の配列(末尾) より前の引数だけを使う
     const head = argsStr.slice(0, argsStr.indexOf('['));
     const tokens = (head === '' ? argsStr : head).split(',').map((t) => t.trim());
     if (tokens.length < 17) continue;
+    // 税金・料金: 表示文字列(円)を優先、無ければ数値引数(index16)
+    const taxYen = i < formattedTax.length ? formattedTax[i] : NUM(tokens[16]);
     recs.push({
       outboundId: tokens[1].replace(/['"]/g, ''),
       inboundId: tokens[2].replace(/['"]/g, ''),
       requiredMiles: NUM(tokens[11]),
       outboundSeats: tokens[14] !== undefined ? NUM(tokens[14]) : null,
       inboundSeats: tokens[15] !== undefined ? NUM(tokens[15]) : null,
-      taxYen: NUM(tokens[16]),
+      taxYen,
     });
+    i++;
   }
   return recs;
 }

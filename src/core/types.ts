@@ -79,6 +79,8 @@ export interface FlightSegment {
   marketingCarrier: string;
   /** 運航キャリア (例: "NH" / "UA" / "LH") */
   operatingCarrier: string;
+  /** 運航航空会社名 (例: "ANA" / "ユナイテッド航空" / "ANAウイングス") */
+  carrierName?: string;
   flightNumber: string;
   depAirport: string;
   arrAirport: string;

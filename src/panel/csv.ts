@@ -12,11 +12,23 @@ const HEADER = [
   '復路出発',
   '復路到着',
   '運航',
+  '往路航空会社',
+  '復路航空会社',
   'キャビン',
   '必要マイル',
-  '燃油サーチャージ',
+  '税金・燃油',
   '路線種別',
 ];
+
+/** 旅程の便を "ANA NH412 → ユナイテッド航空 UA184" のように連結 */
+function flightsLabel(it: { segments: { operatingCarrier: string; flightNumber: string; carrierName?: string }[] }): string {
+  return it.segments
+    .map((s) => {
+      const code = `${s.operatingCarrier}${s.flightNumber}`;
+      return s.carrierName ? `${s.carrierName} ${code}` : code;
+    })
+    .join(' / ');
+}
 
 function esc(v: string | number): string {
   const s = String(v);
@@ -50,9 +62,11 @@ export function rowsToCsv(rows: ResultRow[]): string {
         in0 ? time(in0.depTime) : '',
         inN ? time(inN.arrTime) : '',
         operatorLabel(r),
+        flightsLabel(r.outbound),
+        flightsLabel(r.inbound),
         r.cabin,
         r.totalMiles,
-        r.fuelSurcharge ? `${r.fuelSurcharge.amount}${r.fuelSurcharge.currency}` : '',
+        r.fuelSurcharge ? `${r.fuelSurcharge.amount}${r.fuelSurcharge.currency}` : '0',
         r.type === 'domestic' ? '国内' : '国際',
       ]
         .map(esc)

@@ -77,7 +77,10 @@ function itineraryCell(r: ResultRow, dir: 'outbound' | 'inbound'): string {
   const first = it.segments[0];
   const last = it.segments[it.segments.length - 1];
   const carriers = it.segments
-    .map((s) => `${s.operatingCarrier}${s.flightNumber}`)
+    .map((s) => {
+      const code = `${s.operatingCarrier}${s.flightNumber}`;
+      return s.carrierName ? `${s.carrierName} ${code}` : code;
+    })
     .join(' → ');
   const stops = it.segments.length > 1 ? ` <span class="stops">(${it.segments.length - 1}回乗継)</span>` : '';
   return `<td>
@@ -102,7 +105,7 @@ export function renderTable(container: HTMLElement, rows: ResultRow[], view: Tab
     <th>復路便</th>
     <th>キャビン</th>
     <th data-sort="miles" class="sortable">必要マイル${arrow('miles')}</th>
-    <th data-sort="surcharge" class="sortable">燃油${arrow('surcharge')}</th>
+    <th data-sort="surcharge" class="sortable">税金・燃油${arrow('surcharge')}</th>
   </tr></thead>`;
 
   const body = shown

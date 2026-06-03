@@ -35,9 +35,16 @@ describe('parseLegacyIntlResult (旧国際線エンジン)', () => {
     expect(r2.inbound.operatorType).toBe('PARTNER');
   });
 
-  it('税金>0 はサーチャージとして保持、0 は null', () => {
+  it('税金・料金(表示の円)をサーチャージとして取得、0 は null', () => {
     expect(rows.find((r) => r.id === '0_0')!.fuelSurcharge).toBeNull();
     expect(rows.find((r) => r.id === '0_2')!.fuelSurcharge).toEqual({ amount: 5000, currency: 'JPY' });
+  });
+
+  it('運航航空会社名を取得 (ANA運航便アイコン/○○運航テキスト)', () => {
+    const r = rows.find((r) => r.id === '1_0')!;
+    // 往路 NH412(ANA) / NH869(ANA) / UA184(ユナイテッド航空)
+    expect(r.outbound.segments.map((s) => s.carrierName)).toEqual(['ANA', 'ANA', 'ユナイテッド航空']);
+    expect(rows.find((r) => r.id === '0_0')!.outbound.segments[0].carrierName).toBe('ユナイテッド航空');
   });
 
   it('空席数を recommendation から取得', () => {
