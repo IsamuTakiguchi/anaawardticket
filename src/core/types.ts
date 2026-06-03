@@ -151,8 +151,8 @@ export type ContentToSwMessage =
 export type SwToContentMessage =
   | { type: 'RUN_SEARCH'; job: SearchJob; config: SweepConfig }
   | { type: 'SET_DEV_CAPTURE'; enabled: boolean }
-  // 旧国際線エンジン: 再検索フォームに日付を入れて検索実行 (ページ遷移が起きる)
-  | { type: 'LEGACY_SUBMIT'; outboundDate: string; returnDate: string };
+  // 旧国際線エンジン: 再検索フォームに日付(と路線)を入れて検索実行 (ページ遷移が起きる)
+  | { type: 'LEGACY_SUBMIT'; outboundDate: string; returnDate: string; depart?: string; dest?: string };
 
 /** panel → service-worker */
 export type PanelToSwMessage =

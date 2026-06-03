@@ -69,7 +69,7 @@ async function handleSwMessage(msg: SwToContentMessage): Promise<void> {
       break;
     case 'LEGACY_SUBMIT': {
       console.info('[ana-sweep] LEGACY_SUBMIT 受信', msg.outboundDate, msg.returnDate);
-      const ok = legacySubmit(msg.outboundDate, msg.returnDate);
+      const ok = legacySubmit(msg.outboundDate, msg.returnDate, msg.depart, msg.dest);
       if (!ok) {
         // フォーム投入に失敗 → challenge 扱いで上位に通知 (タイムアウトでも拾われる)
         send({ type: 'CHALLENGE_DETECTED', reason: '再検索フォームを操作できませんでした' });

@@ -108,10 +108,16 @@ function makeHooks() {
   };
 }
 
-function makeLegacyHooks(): LegacyHooks {
+function makeLegacyHooks(config: SweepConfig): LegacyHooks {
   return {
     submit: (outboundDate, returnDate) => {
-      const msg = { type: 'LEGACY_SUBMIT', outboundDate, returnDate } as const;
+      const msg = {
+        type: 'LEGACY_SUBMIT',
+        outboundDate,
+        returnDate,
+        depart: config.depart,
+        dest: config.dest,
+      } as const;
       sendToAnaTabs(msg); // Port が切れていても届く確実な経路
       sendToContent(msg); // 接続中の Port にも (冗長)
     },
@@ -148,7 +154,7 @@ async function startSweep(config: SweepConfig): Promise<void> {
   await clearRows();
   if (usesLegacy(config)) {
     orchestrator = null;
-    legacy = new LegacySweepController(makeLegacyHooks(), config);
+    legacy = new LegacySweepController(makeLegacyHooks(config), config);
     legacy.start();
   } else {
     legacy = null;
@@ -161,7 +167,7 @@ async function restoreOrchestrator(): Promise<void> {
   const saved = await loadSweep();
   if (saved && (saved.state === 'running' || saved.state === 'paused' || saved.state === 'blocked')) {
     if (usesLegacy(saved.config)) {
-      legacy = new LegacySweepController(makeLegacyHooks(), saved.config, saved.jobs, saved.cursor);
+      legacy = new LegacySweepController(makeLegacyHooks(saved.config), saved.config, saved.jobs, saved.cursor);
       // 復元直後は実行しない。次の結果ページ読込 or ユーザーの Resume を待つ。
     } else {
       orchestrator = new SweepOrchestrator(makeHooks(), saved.config, saved.jobs);

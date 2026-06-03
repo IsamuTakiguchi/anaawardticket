@@ -75,7 +75,12 @@ function setInput(id: string, value: string): boolean {
  * ページ遷移(POST)が発生する。成功裡に投入できたら true。
  * 実機差異の切り分けのため各ステップを console に出力する。
  */
-export function legacySubmit(outboundDate: string, returnDate: string): boolean {
+export function legacySubmit(
+  outboundDate: string,
+  returnDate: string,
+  depart?: string,
+  dest?: string,
+): boolean {
   const TAG = '[ana-sweep:legacy]';
   const out = outboundDate.replace(/-/g, '');
   const ret = returnDate.replace(/-/g, '');
@@ -85,6 +90,15 @@ export function legacySubmit(outboundDate: string, returnDate: string): boolean 
   // 表示用テキストも更新 (バリデーション対策。失敗しても致命的でない)
   setInput('awardDepartureDate:field_pctext', out);
   setInput('awardReturnDate:field_pctext', ret);
+  // 路線 (空港コード) も指定されていれば hidden フィールドを更新
+  if (depart) {
+    const ok = setInput('departureAirportCode:field', depart);
+    console.info(`${TAG} 出発地投入 ${depart} (field=${ok})`);
+  }
+  if (dest) {
+    const ok = setInput('arrivalAirportCode:field', dest);
+    console.info(`${TAG} 目的地投入 ${dest} (field=${ok})`);
+  }
   console.info(`${TAG} 日付投入 out=${out} ret=${ret} (depField=${okOut}, retField=${okRet})`);
   if (!okOut || !okRet) {
     console.warn(`${TAG} 日付の hidden フィールドが見つかりません`);
