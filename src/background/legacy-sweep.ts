@@ -117,16 +117,33 @@ export class LegacySweepController {
   }
 
   /** 結果ページ読込完了の通知を受けて次へ進める */
-  onPageReady(outboundDate: string, returnDate: string, dest: string, cabin: string, rows: ResultRow[], isResultPage: boolean): void {
+  onPageReady(outboundDate: string, returnDate: string, dest: string, cabin: string, rows: ResultRow[], isResultPage: boolean, noResults = false): void {
     if (this.state !== 'running') return;
-    if (!isResultPage) return; // 検索フォーム等。結果ページのみ扱う
     const job = this.jobs[this.cursor];
-    if (!job) return;
+    if (!job || job.status !== 'running') return;
+
+    const datesKnown = !!outboundDate && !!returnDate;
+    const matches =
+      datesKnown &&
+      outboundDate === job.outboundDate &&
+      returnDate === job.returnDate &&
+      (!dest || !job.dest || dest === job.dest) &&
+      (!cabin || !job.cabin || cabin === job.cabin);
+
+    // 空席なし(条件設定ページに遷移)の場合: 日付が読めれば一致確認、
+    // 読めなければ実行中ジョブの結果とみなして必ず先へ進める (中断防止)。
+    if (noResults) {
+      if (datesKnown && !matches) return; // 別ジョブのページなら無視
+      this.hooks.clearTimer();
+      job.status = 'empty';
+      this.empty++;
+      this.advance();
+      return;
+    }
+
+    if (!isResultPage) return; // 検索フォーム等。結果ページのみ扱う
     // 期待している目的地・日付ペアと一致するときだけ受理 (ユーザー操作や古いページを無視)
-    if (outboundDate !== job.outboundDate || returnDate !== job.returnDate) return;
-    // dest/cabin は読めない場合があるため、取得できたときのみ突き合わせる
-    if (dest && job.dest && dest !== job.dest) return;
-    if (cabin && job.cabin && cabin !== job.cabin) return;
+    if (!matches) return;
 
     this.hooks.clearTimer();
     if (rows.length > 0) {
@@ -138,6 +155,26 @@ export class LegacySweepController {
       this.empty++;
     }
     this.advance();
+  }
+
+  /** 再検索フォームの操作に失敗した通知。当該ジョブのみ即リトライ/失敗扱いとし、
+   *  全体は止めない (CHALLENGE と異なり block しない)。 */
+  onSubmitFailed(reason: string): void {
+    if (this.state !== 'running') return;
+    const job = this.jobs[this.cursor];
+    if (!job || job.status !== 'running') return;
+    if (job.attempts < MAX_ATTEMPTS) {
+      this.hooks.clearTimer();
+      // 少し待ってから再投入 (ページが安定するのを待つ)
+      this.hooks.setTimer(this.throttleWait, () => {
+        if (this.state === 'running') this.submitCurrent();
+      });
+    } else {
+      job.status = 'failed';
+      job.failureReason = reason || '再検索フォームを操作できませんでした';
+      this.failed++;
+      this.advance();
+    }
   }
 
   // --- 内部 -------------------------------------------------------------

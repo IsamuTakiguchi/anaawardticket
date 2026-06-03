@@ -69,6 +69,7 @@ table.results th { background: #eef3f9; position: sticky; top: 0; }
 th.sortable { cursor: pointer; user-select: none; }
 td.num { text-align: right; font-variant-numeric: tabular-nums; }
 td.muted, .muted { color: #999; }
+td.route { font-weight: 600; white-space: nowrap; }
 .time { font-weight: 600; }
 .flt { font-size: 11px; color: #555; }
 .stops { color: #b06a00; }

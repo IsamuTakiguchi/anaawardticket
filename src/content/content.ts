@@ -71,8 +71,9 @@ async function handleSwMessage(msg: SwToContentMessage): Promise<void> {
       console.info('[ana-sweep] LEGACY_SUBMIT 受信', msg.outboundDate, msg.returnDate);
       const ok = legacySubmit(msg.outboundDate, msg.returnDate, msg.depart, msg.dest, msg.cabin);
       if (!ok) {
-        // フォーム投入に失敗 → challenge 扱いで上位に通知 (タイムアウトでも拾われる)
-        send({ type: 'CHALLENGE_DETECTED', reason: '再検索フォームを操作できませんでした' });
+        // フォーム投入に失敗 → 当該ジョブのみ失敗扱い (全体は止めない)。
+        // CHALLENGE_DETECTED は認証要求専用とし、ここでは使わない。
+        send({ type: 'LEGACY_SUBMIT_FAILED', reason: '再検索フォームを操作できませんでした' });
       }
       break;
     }
@@ -94,24 +95,62 @@ function reportLegacyPageIfResult(): void {
       console.info('[ana-sweep] 空港リスト取り込み', list.airports.length, '件');
     }
   } catch { /* noop */ }
+  const noResults = isNoResultsPage();
   // 空席あり(便一覧)も空席なしページも、検索条件が読めれば報告する。
   // 空席なしページは便が無いため rows=[] となり、上位は「空席なし」として次へ進む。
   const parsed = parseCurrentPage();
-  if (!parsed) {
-    console.warn('[ana-sweep] award系ページだが検索条件(SearchCriteriaOutput)を読めず報告できません');
+  if (parsed) {
+    console.info(`[ana-sweep] ページ報告 ${parsed.dest} ${parsed.cabin} ${parsed.outboundDate}→${parsed.returnDate} 行数=${parsed.rows.length}${noResults ? ' (空席なし)' : ''}`);
+    send({
+      type: 'LEGACY_PAGE_READY',
+      outboundDate: parsed.outboundDate,
+      returnDate: parsed.returnDate,
+      dest: parsed.dest,
+      cabin: parsed.cabin,
+      rows: parsed.rows,
+      isResultPage: !noResults,
+      noResults,
+    });
     return;
   }
-  const noResults = isNoResultsPage();
-  console.info(`[ana-sweep] ページ報告 ${parsed.dest} ${parsed.cabin} ${parsed.outboundDate}→${parsed.returnDate} 行数=${parsed.rows.length}${noResults ? ' (空席なし)' : ''}`);
-  send({
-    type: 'LEGACY_PAGE_READY',
-    outboundDate: parsed.outboundDate,
-    returnDate: parsed.returnDate,
-    dest: parsed.dest,
-    cabin: parsed.cabin,
-    rows: parsed.rows,
-    isResultPage: true,
-  });
+  // 検索条件が読めない＝空席なしで条件設定ページに飛ばされた可能性が高い。
+  // 日付が読めなくても、実行中ジョブを「空席なし」として次へ進めるため報告する。
+  if (noResults) {
+    console.info('[ana-sweep] 条件設定ページ(空席なし)を検出。実行中ジョブを空席なしとして次へ進めます');
+    send({
+      type: 'LEGACY_PAGE_READY',
+      outboundDate: '',
+      returnDate: '',
+      dest: '',
+      cabin: 'ECONOMY',
+      rows: [],
+      isResultPage: false,
+      noResults: true,
+    });
+    return;
+  }
+  // 診断用: フォームのフィールドID・検索ボタンを出力 (入力ページの構造特定のため)
+  dumpFormDiagnostics();
+  console.warn('[ana-sweep] award系ページだが検索条件を読めず、空席なし表示も無いため報告を見送りました');
+}
+
+/** 入力/条件ページのフォーム構造を特定するための診断ログ。
+ *  日付・空港・クラスらしき入力欄IDと、検索ボタン候補を列挙する。 */
+function dumpFormDiagnostics(): void {
+  try {
+    const TAG = '[ana-sweep:diag]';
+    const inputs = Array.from(document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input,select'));
+    const interesting = inputs
+      .filter((el) => /date|depart|arriv|airport|board|class|cff/i.test(el.id + ' ' + el.getAttribute('name')))
+      .map((el) => `${el.tagName}#${el.id || '(no-id)'}[name=${el.getAttribute('name') ?? ''}]=${(el as HTMLInputElement).value ?? ''}`);
+    console.info(`${TAG} 候補入力欄:`, interesting.length ? interesting : '(該当なし)');
+    const buttons = Array.from(
+      document.querySelectorAll<HTMLInputElement | HTMLButtonElement>('input[type="submit"],input[type="button"],button,a[role="button"]'),
+    )
+      .map((b) => ('value' in b && b.value ? b.value : b.textContent?.trim()) || '')
+      .filter((t) => /検索|search/i.test(t));
+    console.info(`${TAG} 検索ボタン候補:`, buttons.length ? buttons : '(該当なし)');
+  } catch { /* noop */ }
 }
 if (document.readyState === 'complete') reportLegacyPageIfResult();
 else window.addEventListener('load', reportLegacyPageIfResult);

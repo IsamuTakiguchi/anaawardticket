@@ -193,8 +193,11 @@ function handleContentMessage(msg: ContentToSwMessage): void {
       orchestrator?.block(msg.reason);
       legacy?.block(msg.reason);
       break;
+    case 'LEGACY_SUBMIT_FAILED':
+      legacy?.onSubmitFailed(msg.reason);
+      break;
     case 'LEGACY_PAGE_READY':
-      legacy?.onPageReady(msg.outboundDate, msg.returnDate, msg.dest, msg.cabin, msg.rows, msg.isResultPage);
+      legacy?.onPageReady(msg.outboundDate, msg.returnDate, msg.dest, msg.cabin, msg.rows, msg.isResultPage, msg.noResults);
       break;
     case 'PAGE_READY':
       // dev capture 状態を新しいページへ伝える

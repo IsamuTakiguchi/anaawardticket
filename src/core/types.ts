@@ -164,8 +164,11 @@ export type ContentToSwMessage =
   | { type: 'CAPTURE'; capture: RawCapture }
   | { type: 'PAGE_READY'; url: string }
   | { type: 'CHALLENGE_DETECTED'; reason: string }
-  // 旧国際線エンジン: 結果ページ読込完了。現在の日付ペア・目的地・クラスと解析済み行を報告
-  | { type: 'LEGACY_PAGE_READY'; outboundDate: string; returnDate: string; dest: string; cabin: Cabin; rows: ResultRow[]; isResultPage: boolean };
+  // 旧国際線エンジン: 再検索フォームの操作に失敗 (＝当該ジョブのみ失敗扱い。全体停止しない)
+  | { type: 'LEGACY_SUBMIT_FAILED'; reason: string }
+  // 旧国際線エンジン: 結果ページ読込完了。現在の日付ペア・目的地・クラスと解析済み行を報告。
+  // noResults=true は「空席なし/条件設定ページに遷移」を示し、日付が読めなくても次へ進める。
+  | { type: 'LEGACY_PAGE_READY'; outboundDate: string; returnDate: string; dest: string; cabin: Cabin; rows: ResultRow[]; isResultPage: boolean; noResults?: boolean };
 
 /** service-worker → content */
 export type SwToContentMessage =

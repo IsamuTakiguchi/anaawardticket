@@ -76,6 +76,16 @@ function operatorBadge(t: OperatorType): string {
     : '<span class="badge partner">提携</span>';
 }
 
+/** 区間 (出発地→目的地) を往路セグメントから推定 */
+function routeLabel(r: ResultRow): string {
+  const segs = r.outbound.segments;
+  if (segs.length === 0) return '—';
+  const from = segs[0].depAirport;
+  const to = segs[segs.length - 1].arrAirport;
+  if (!from && !to) return '—';
+  return `${from || '?'} → ${to || '?'}`;
+}
+
 function itineraryCell(r: ResultRow, dir: 'outbound' | 'inbound'): string {
   const it = r[dir];
   if (it.segments.length === 0) return '<td class="muted">—</td>';
@@ -104,6 +114,7 @@ export function renderTable(container: HTMLElement, rows: ResultRow[], view: Tab
   }
 
   const head = `<thead><tr>
+    <th>区間</th>
     <th data-sort="date" class="sortable">往路日${arrow('date')}</th>
     <th>復路日</th>
     <th>往路便</th>
@@ -116,6 +127,7 @@ export function renderTable(container: HTMLElement, rows: ResultRow[], view: Tab
   const body = shown
     .map(
       (r) => `<tr>
+        <td class="route">${routeLabel(r)}</td>
         <td>${r.outbound.date}</td>
         <td>${r.inbound.date}</td>
         ${itineraryCell(r, 'outbound')}

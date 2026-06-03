@@ -103,6 +103,32 @@ describe('LegacySweepController', () => {
     expect(h.submits.some((s) => s.out === '2026-11-06')).toBe(true);
   });
 
+  it('空席なし(条件設定ページ): 日付が読めなくても実行中ジョブを空席なしにして次へ進む', () => {
+    const h = harness();
+    const c = new LegacySweepController(h.hooks, config);
+    c.start();
+    // 入力ページに飛ばされ日付が読めない (空文字) が noResults=true
+    c.onPageReady('', '', '', 'ECONOMY', [], false, true);
+    expect(c.getJobs()[0].status).toBe('empty');
+    h.runTimers(); // throttle → 次ジョブ投入
+    expect(h.submits.map((s) => s.out)).toEqual(['2026-11-05', '2026-11-06']);
+  });
+
+  it('再検索失敗(onSubmitFailed)はリトライし、上限超過で failed にして次へ。block しない', () => {
+    const h = harness();
+    const c = new LegacySweepController(h.hooks, config);
+    c.start(); // submit#1 (attempt1)
+    c.onSubmitFailed('フォーム操作失敗'); // attempt<3 → throttle 後に再投入
+    h.runTimers(); // submit#2 (attempt2)
+    c.onSubmitFailed('フォーム操作失敗');
+    h.runTimers(); // submit#3 (attempt3)
+    c.onSubmitFailed('フォーム操作失敗'); // attempts>=3 → failed, advance
+    expect(c.getJobs()[0].status).toBe('failed');
+    expect(c.getState()).toBe('running'); // block していない
+    h.runTimers(); // throttle → 次ジョブ
+    expect(h.submits.some((s) => s.out === '2026-11-06')).toBe(true);
+  });
+
   it('pause すると次の投入が止まる', () => {
     const h = harness();
     const c = new LegacySweepController(h.hooks, config);

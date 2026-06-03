@@ -107,15 +107,80 @@ export function extractAnaAirports(): AnaAirportList | null {
   return { regions, airports };
 }
 
-function setInput(id: string, value: string): boolean {
-  const el = document.getElementById(id) as HTMLInputElement | null;
-  if (!el) return false;
+function setElValue(el: HTMLInputElement | HTMLSelectElement, value: string): void {
   const proto = Object.getPrototypeOf(el);
   const desc = Object.getOwnPropertyDescriptor(proto, 'value');
   desc?.set?.call(el, value);
   el.dispatchEvent(new Event('input', { bubbles: true }));
   el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+
+function setInput(id: string, value: string): boolean {
+  const el = document.getElementById(id) as HTMLInputElement | null;
+  if (!el) return false;
+  setElValue(el, value);
   return true;
+}
+
+/**
+ * id を完全一致で試し、無ければ id/name に部分一致する入力欄を探して値を入れる。
+ * 結果ページの再検索フォームと条件設定ページとで JSF の自動採番IDが異なるため、
+ * 部分一致フォールバックで両方に対応する。
+ */
+function setInputFlexible(ids: string[], substrs: RegExp, value: string): boolean {
+  for (const id of ids) {
+    if (setInput(id, value)) return true;
+  }
+  const el = Array.from(
+    document.querySelectorAll<HTMLInputElement>('input[type="text"],input[type="hidden"],input:not([type])'),
+  ).find((e) => substrs.test(e.id) || substrs.test(e.getAttribute('name') ?? ''));
+  if (el) {
+    setElValue(el, value);
+    return true;
+  }
+  return false;
+}
+
+function setSelectFlexible(ids: string[], substrs: RegExp, value: string): boolean {
+  for (const id of ids) {
+    const el = document.getElementById(id) as HTMLSelectElement | null;
+    if (el) { setElValue(el, value); return true; }
+  }
+  const el = Array.from(document.querySelectorAll<HTMLSelectElement>('select')).find(
+    (e) => substrs.test(e.id) || substrs.test(e.getAttribute('name') ?? ''),
+  );
+  if (el) { setElValue(el, value); return true; }
+  return false;
+}
+
+/** ドキュメント全体から「検索する」ボタン/リンクを探してクリックする。 */
+function clickSearchButton(tag: string): boolean {
+  // まず再検索モーダル内を優先 (結果ページ)
+  const scopes: (Element | Document)[] = [];
+  const modal = document.getElementById('displaySearchModal');
+  if (modal) scopes.push(modal);
+  scopes.push(document);
+  for (const scope of scopes) {
+    const cands = Array.from(
+      scope.querySelectorAll<HTMLElement>('input[type="submit"],input[type="button"],button,a[role="button"]'),
+    );
+    const labelOf = (b: HTMLElement) =>
+      ('value' in b && (b as HTMLInputElement).value) || b.textContent?.trim() || '';
+    const hit = cands.find((b) => /検索/.test(labelOf(b)) && !/条件|変更|クリア|リセット/.test(labelOf(b)));
+    if (hit) {
+      console.info(`${tag} 「${labelOf(hit)}」をクリックします`);
+      hit.click();
+      return true;
+    }
+  }
+  // JSF の再検索リンク
+  const anchor = document.getElementById('toRoundTrip') as HTMLAnchorElement | null;
+  if (anchor) {
+    console.info(`${tag} #toRoundTrip で送信します`);
+    anchor.click();
+    return true;
+  }
+  return false;
 }
 
 /**
@@ -133,52 +198,37 @@ export function legacySubmit(
   const TAG = '[ana-sweep:legacy]';
   const out = outboundDate.replace(/-/g, '');
   const ret = returnDate.replace(/-/g, '');
-  // 投稿される hidden の日付フィールド (権威) を更新
-  const okOut = setInput('awardDepartureDate:field', out);
-  const okRet = setInput('awardReturnDate:field', ret);
+  // 投稿される hidden の日付フィールド (権威) を更新。結果ページの再検索フォームと
+  // 条件設定ページとで ID が異なるため、部分一致フォールバック付きで投入する。
+  const okOut = setInputFlexible(['awardDepartureDate:field'], /departuredate|outbounddate|^award.*depart/i, out);
+  const okRet = setInputFlexible(['awardReturnDate:field'], /returndate|inbounddate|^award.*return/i, ret);
   // 表示用テキストも更新 (バリデーション対策。失敗しても致命的でない)
   setInput('awardDepartureDate:field_pctext', out);
   setInput('awardReturnDate:field_pctext', ret);
-  // 路線 (空港コード) も指定されていれば hidden フィールドを更新
+  // 路線 (空港コード) も指定されていれば更新
   if (depart) {
-    const ok = setInput('departureAirportCode:field', depart);
+    const ok = setInputFlexible(['departureAirportCode:field'], /departureairport/i, depart);
     console.info(`${TAG} 出発地投入 ${depart} (field=${ok})`);
   }
   if (dest) {
-    const ok = setInput('arrivalAirportCode:field', dest);
+    const ok = setInputFlexible(['arrivalAirportCode:field'], /arrivalairport/i, dest);
     console.info(`${TAG} 目的地投入 ${dest} (field=${ok})`);
   }
-  // キャビン (特典種別 CFF コード) も指定されていれば boardingClass を更新
+  // キャビン (特典種別 CFF コード) も指定されていれば更新
   if (cabin) {
     const cff = CABIN_CFF[cabin];
-    const ok = setInput('boardingClass', cff);
+    const ok =
+      setInputFlexible(['boardingClass'], /boardingclass|cffcode|cabin/i, cff) ||
+      setSelectFlexible(['boardingClass'], /boardingclass|cffcode|cabin/i, cff);
     console.info(`${TAG} クラス投入 ${cabin}/${cff} (field=${ok})`);
   }
   console.info(`${TAG} 日付投入 out=${out} ret=${ret} (depField=${okOut}, retField=${okRet})`);
   if (!okOut || !okRet) {
-    console.warn(`${TAG} 日付の hidden フィールドが見つかりません`);
+    console.warn(`${TAG} 日付フィールドが見つかりません (結果/条件設定ページとも非対応)`);
     return false;
   }
 
-  // #displaySearchModal 内の「検索する」submit を探してクリック
-  const modal = document.getElementById('displaySearchModal');
-  const submits = Array.from(modal?.querySelectorAll<HTMLInputElement>('input[type="submit"]') ?? []);
-  console.info(`${TAG} modal内のsubmit候補: ` + submits.map((b) => b.value).join(' | '));
-  const searchBtn = submits.find((b) => /検索/.test(b.value));
-  if (searchBtn) {
-    console.info(`${TAG} 「${searchBtn.value}」をクリックします`);
-    searchBtn.click();
-    return true;
-  }
-
-  // フォールバック: JSF の再検索リンク (#toRoundTrip) を起動して reSearchForm を送信
-  const anchor = document.getElementById('toRoundTrip') as HTMLAnchorElement | null;
-  if (anchor) {
-    console.info(`${TAG} 検索ボタンが見つからないため #toRoundTrip で送信します`);
-    anchor.click();
-    return true;
-  }
-
+  if (clickSearchButton(TAG)) return true;
   console.warn(`${TAG} 検索ボタン/再検索リンクが見つかりません`);
   return false;
 }

@@ -5,6 +5,8 @@
 import type { ResultRow } from '../core/types';
 
 const HEADER = [
+  '出発地',
+  '目的地',
   '往路日',
   '復路日',
   '往路出発',
@@ -55,6 +57,8 @@ export function rowsToCsv(rows: ResultRow[]): string {
     const inN = r.inbound.segments[r.inbound.segments.length - 1];
     lines.push(
       [
+        out0 ? out0.depAirport : '',
+        outN ? outN.arrAirport : '',
         r.outbound.date,
         r.inbound.date,
         out0 ? time(out0.depTime) : '',
