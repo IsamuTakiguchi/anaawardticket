@@ -12,7 +12,7 @@ import type {
   SwToContentMessage,
 } from '../core/types';
 import { runSearch } from './page-driver';
-import { isLegacyResultPage, legacySubmit, parseCurrentPage } from './legacy-driver';
+import { isLegacyAwardPage, isNoResultsPage, legacySubmit, parseCurrentPage } from './legacy-driver';
 
 const PORT_NAME = 'ana-sweep';
 let port: chrome.runtime.Port | null = null;
@@ -83,14 +83,18 @@ async function handleSwMessage(msg: SwToContentMessage): Promise<void> {
 // ページ遷移のたびに content script は再実行される。結果ページなら解析して
 // 現在の日付ペアと行を SW に送る (スイープ制御が次の検索を投入する)。
 function reportLegacyPageIfResult(): void {
-  console.info('[ana-sweep] content script 稼働中:', location.href, '/ 旧国際線結果ページ=', isLegacyResultPage());
-  if (!isLegacyResultPage()) return;
+  const onAward = isLegacyAwardPage();
+  console.info('[ana-sweep] content script 稼働中:', location.href, '/ award系ページ=', onAward);
+  if (!onAward) return;
+  // 空席あり(便一覧)も空席なしページも、検索条件が読めれば報告する。
+  // 空席なしページは便が無いため rows=[] となり、上位は「空席なし」として次へ進む。
   const parsed = parseCurrentPage();
   if (!parsed) {
-    console.warn('[ana-sweep] 結果ページだが解析に失敗 (検索条件を読めず)');
+    console.warn('[ana-sweep] award系ページだが検索条件(SearchCriteriaOutput)を読めず報告できません');
     return;
   }
-  console.info(`[ana-sweep] 結果ページ報告 ${parsed.outboundDate}→${parsed.returnDate} 行数=${parsed.rows.length}`);
+  const noResults = isNoResultsPage();
+  console.info(`[ana-sweep] ページ報告 ${parsed.outboundDate}→${parsed.returnDate} 行数=${parsed.rows.length}${noResults ? ' (空席なし)' : ''}`);
   send({
     type: 'LEGACY_PAGE_READY',
     outboundDate: parsed.outboundDate,

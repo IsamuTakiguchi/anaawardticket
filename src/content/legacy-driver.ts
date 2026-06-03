@@ -23,32 +23,52 @@ export function isLegacyResultPage(): boolean {
   );
 }
 
+/** 空席なし（条件に合うものがありませんでした）ページか */
+export function isNoResultsPage(): boolean {
+  const t = document.body?.textContent ?? '';
+  return /合うものがありませんでした|検索内容に合うもの/.test(t);
+}
+
+/** ANA旧国際線の award 関連ページか (結果/空席なし/再検索を含む) */
+export function isLegacyAwardPage(): boolean {
+  return (
+    location.hostname.endsWith('aswbe-i.ana.co.jp') &&
+    /award_search/.test(location.pathname)
+  );
+}
+
 function ymd(yyyymmdd: string): string {
   return /^\d{8}$/.test(yyyymmdd)
     ? `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`
     : yyyymmdd;
 }
 
-/** ページ埋め込みの Asw.SearchCriteriaOutput から検索条件を読む */
+/** ページ埋め込みの Asw.SearchCriteriaOutput から検索条件を読む。
+ *  無ければ再検索フォームの hidden 日付フィールドから読む (空席なしページ対策)。 */
 export function readSearchCriteria(): { outboundDate: string; returnDate: string; cabin: Cabin } | null {
   const scripts = Array.from(document.querySelectorAll('script'))
     .map((s) => s.textContent ?? '')
     .join('\n');
   const m = /Asw\.SearchCriteriaOutput\s*=\s*(\{[\s\S]*?\});/.exec(scripts);
-  if (!m) return null;
-  try {
-    const sc = JSON.parse(m[1]) as {
-      requestedSegmentList?: { departureDateYyyyMMdd?: string }[];
-      cffCodeInput?: string;
-    };
-    return {
-      outboundDate: ymd(sc.requestedSegmentList?.[0]?.departureDateYyyyMMdd ?? ''),
-      returnDate: ymd(sc.requestedSegmentList?.[1]?.departureDateYyyyMMdd ?? ''),
-      cabin: CFF_CABIN[sc.cffCodeInput ?? ''] ?? 'ECONOMY',
-    };
-  } catch {
-    return null;
+  if (m) {
+    try {
+      const sc = JSON.parse(m[1]) as {
+        requestedSegmentList?: { departureDateYyyyMMdd?: string }[];
+        cffCodeInput?: string;
+      };
+      const o = ymd(sc.requestedSegmentList?.[0]?.departureDateYyyyMMdd ?? '');
+      const r = ymd(sc.requestedSegmentList?.[1]?.departureDateYyyyMMdd ?? '');
+      if (o && r) return { outboundDate: o, returnDate: r, cabin: CFF_CABIN[sc.cffCodeInput ?? ''] ?? 'ECONOMY' };
+    } catch { /* fall through */ }
   }
+  // フォールバック: 再検索フォームの hidden 日付フィールド (空席なしページでも存在する)
+  const dep = (document.getElementById('awardDepartureDate:field') as HTMLInputElement | null)?.value ?? '';
+  const ret = (document.getElementById('awardReturnDate:field') as HTMLInputElement | null)?.value ?? '';
+  const cff = (document.getElementById('boardingClass') as HTMLSelectElement | null)?.value ?? '';
+  if (/^\d{8}$/.test(dep) && /^\d{8}$/.test(ret)) {
+    return { outboundDate: ymd(dep), returnDate: ymd(ret), cabin: CFF_CABIN[cff] ?? 'ECONOMY' };
+  }
+  return null;
 }
 
 /** 現在の結果ページを解析して行と日付を返す */
