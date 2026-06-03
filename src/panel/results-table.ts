@@ -13,7 +13,7 @@ export interface TableViewState {
   operator: OperatorFilter;
   cabin: Cabin | 'all';
   maxMiles: number | null;
-  surchargeFree: boolean; // true でサーチャージ無しのみ
+  excludeWaitlist: boolean; // true で空席待ち(座席数0)を除外
 }
 
 export const DEFAULT_VIEW: TableViewState = {
@@ -22,7 +22,7 @@ export const DEFAULT_VIEW: TableViewState = {
   operator: 'all',
   cabin: 'all',
   maxMiles: null,
-  surchargeFree: false,
+  excludeWaitlist: false,
 };
 
 function rowOperator(r: ResultRow): OperatorType {
@@ -33,12 +33,17 @@ function rowOperator(r: ResultRow): OperatorType {
     : 'ANA';
 }
 
+/** 往路または復路の空席が 0 = 空席待ち */
+function isWaitlist(r: ResultRow): boolean {
+  return r.outbound.availableSeats === 0 || r.inbound.availableSeats === 0;
+}
+
 export function applyView(rows: ResultRow[], view: TableViewState): ResultRow[] {
   let out = rows.filter((r) => {
     if (view.operator !== 'all' && rowOperator(r) !== view.operator) return false;
     if (view.cabin !== 'all' && r.cabin !== view.cabin) return false;
     if (view.maxMiles != null && r.totalMiles > view.maxMiles) return false;
-    if (view.surchargeFree && r.fuelSurcharge != null) return false;
+    if (view.excludeWaitlist && isWaitlist(r)) return false;
     return true;
   });
 

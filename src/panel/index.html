@@ -12,18 +12,12 @@
       <nav class="tabs">
         <button data-tab="search" class="active">検索</button>
         <button data-tab="results">結果</button>
-        <button data-tab="dev">Dev</button>
       </nav>
     </header>
 
     <!-- 検索条件 -->
     <section id="tab-search" class="tab-panel active">
       <form id="sweep-form">
-        <fieldset>
-          <legend>路線</legend>
-          <label><input type="radio" name="type" value="international" checked /> 国際線</label>
-          <label><input type="radio" name="type" value="domestic" /> 国内線</label>
-        </fieldset>
         <div class="row">
           <label>出発空港
             <select name="depart" id="depart-select" required></select>
@@ -111,32 +105,11 @@
           </select>
         </label>
         <label>最大マイル <input type="number" id="f-maxmiles" placeholder="上限なし" min="0" /></label>
-        <label><input type="checkbox" id="f-surcharge-free" /> 燃油なしのみ</label>
+        <label><input type="checkbox" id="f-waitlist" /> 空席待ちを除外</label>
         <button id="btn-csv">CSV出力</button>
         <button id="btn-clear">結果クリア</button>
       </div>
       <div id="results"></div>
-    </section>
-
-    <!-- Dev capture -->
-    <section id="tab-dev" class="tab-panel">
-      <p class="note">
-        Dev capture を ON にすると ANA ドメインの全 fetch/XHR を記録します。ログイン状態で
-        手動検索を 1 回行い、JSON をダウンロードして空席照会の応答構造を特定してください。
-      </p>
-      <label class="toggle"><input type="checkbox" id="dev-toggle" /> Dev capture を有効化</label>
-      <div class="controls">
-        <button id="btn-dl-captures">キャプチャをJSONでダウンロード</button>
-        <button id="btn-clear-captures">キャプチャ消去</button>
-      </div>
-      <p class="note">
-        旧予約エンジン(aswbe-i)は検索結果をページのHTMLに埋め込みます。結果ページを開いた状態で
-        下のボタンを押すと、解析用にそのHTMLを保存できます（個人情報を含むため共有前に削除してください）。
-      </p>
-      <div class="controls">
-        <button id="btn-dl-html">現在のページHTMLを保存</button>
-      </div>
-      <div id="capture-list"></div>
     </section>
 
     <script type="module" src="./panel.ts"></script>

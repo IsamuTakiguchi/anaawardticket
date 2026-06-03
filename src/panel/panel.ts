@@ -9,7 +9,6 @@ import { buildJobMatrix } from '../core/date-matrix';
 import type {
   AnaAirportList,
   Cabin,
-  RawCapture,
   ResultRow,
   SweepConfig,
   SweepProgress,
@@ -153,7 +152,6 @@ function handleSw(msg: SwToPanelMessage): void {
   switch (msg.type) {
     case 'STATE_SNAPSHOT':
       rows = msg.rows;
-      (($('#dev-toggle') as HTMLInputElement).checked = msg.devCapture);
       renderProgress(msg.progress);
       renderResults();
       break;
@@ -177,7 +175,6 @@ document.querySelectorAll<HTMLButtonElement>('.tabs button').forEach((btn) => {
     document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
     btn.classList.add('active');
     $(`#tab-${btn.dataset.tab}`).classList.add('active');
-    if (btn.dataset.tab === 'dev') refreshCaptureList();
   });
 });
 
@@ -192,7 +189,8 @@ function readConfig(): SweepConfig {
   const destSel = ($('#dest-select') as HTMLSelectElement).value;
   const dests = selectedDests.length > 0 ? selectedDests.slice() : (destSel ? [destSel] : []);
   return {
-    type: fd.get('type') === 'domestic' ? 'domestic' : 'international',
+    // 路線は空港の組み合わせで決まるため、エンジンは国際線(旧エンジン)固定
+    type: 'international',
     depart: String(($('#depart-select') as HTMLSelectElement).value ?? '').trim().toUpperCase(),
     dest: dests[0] ?? '',
     dests,
@@ -339,8 +337,8 @@ $('#f-maxmiles').addEventListener('input', (e) => {
   view.maxMiles = v ? Number(v) : null;
   renderResults();
 });
-$('#f-surcharge-free').addEventListener('change', (e) => {
-  view.surchargeFree = (e.target as HTMLInputElement).checked;
+$('#f-waitlist').addEventListener('change', (e) => {
+  view.excludeWaitlist = (e.target as HTMLInputElement).checked;
   renderResults();
 });
 $('#btn-csv').addEventListener('click', () => {
@@ -384,43 +382,19 @@ $('#btn-import-page').addEventListener('click', () => {
   });
 });
 
-// --- Dev capture ---------------------------------------------------------
-$('#dev-toggle').addEventListener('change', (e) => {
-  sendSw({ type: 'SET_DEV_CAPTURE', enabled: (e.target as HTMLInputElement).checked });
-});
-$('#btn-dl-captures').addEventListener('click', () => {
-  chrome.runtime.sendMessage({ type: 'GET_RAW_CAPTURES' }, (res) => {
-    const caps: RawCapture[] = res?.captures ?? [];
-    if (caps.length === 0) return alert('キャプチャがありません');
-    downloadText(`ana-captures-${Date.now()}.json`, JSON.stringify(caps, null, 2), 'application/json');
-  });
-});
-$('#btn-clear-captures').addEventListener('click', () => {
-  chrome.runtime.sendMessage({ type: 'CLEAR_RAW_CAPTURES' }, () => refreshCaptureList());
-});
-$('#btn-dl-html').addEventListener('click', () => {
-  chrome.runtime.sendMessage({ type: 'GET_PAGE_HTML' }, (res) => {
-    if (!res || res.error) return alert('取得失敗: ' + (res?.error ?? '不明') + (res?.url ? `\n現在のタブ: ${res.url}` : ''));
-    downloadText(`ana-page-${Date.now()}.html`, res.html, 'text/html');
-  });
-});
-function refreshCaptureList(): void {
-  chrome.runtime.sendMessage({ type: 'GET_RAW_CAPTURES' }, (res) => {
-    const caps: RawCapture[] = res?.captures ?? [];
-    $('#capture-list').innerHTML =
-      caps.length === 0
-        ? '<p class="note">キャプチャはまだありません。</p>'
-        : caps
-            .slice(-50)
-            .reverse()
-            .map(
-              (c) =>
-                `<div class="cap"><span class="st">${c.status} ${c.method}</span> ${c.url}</div>`,
-            )
-            .join('');
-  });
+// --- 期間終了は期間開始以降に制限 ----------------------------------------
+const periodStartEl = $('#sweep-form [name="periodStart"]') as HTMLInputElement;
+const periodEndEl = $('#sweep-form [name="periodEnd"]') as HTMLInputElement;
+function syncPeriodMin(): void {
+  const start = periodStartEl.value;
+  periodEndEl.min = start || '';
+  if (start && periodEndEl.value && periodEndEl.value < start) {
+    periodEndEl.value = start; // 開始より前なら開始日に補正
+  }
 }
+periodStartEl.addEventListener('change', () => { syncPeriodMin(); updateEstimate(); });
 
 // 初期状態取得
 sendSw({ type: 'GET_STATE' });
+syncPeriodMin();
 updateEstimate();
