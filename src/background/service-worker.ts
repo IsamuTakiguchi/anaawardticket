@@ -6,6 +6,7 @@
 // ===========================================================================
 
 import { SweepOrchestrator } from './sweep-orchestrator';
+import { LegacySweepController, type LegacyHooks } from './legacy-sweep';
 import {
   appendRows,
   clearRawCaptures,
@@ -32,9 +33,16 @@ import type {
 } from '../core/types';
 
 let orchestrator: SweepOrchestrator | null = null;
+let legacy: LegacySweepController | null = null;
+let legacyTimer: ReturnType<typeof setTimeout> | null = null;
 const contentPorts = new Set<chrome.runtime.Port>();
 const panelPorts = new Set<chrome.runtime.Port>();
 let lastProgress: SweepProgress | null = null;
+
+/** 旧国際線エンジン方式を使うか (engine 明示 or 国際線は旧エンジンが本流) */
+function usesLegacy(config: SweepConfig): boolean {
+  return config.engine === 'legacy-intl' || (config.engine == null && config.type === 'international');
+}
 
 // --- アクションクリックでサイドパネルを開く ------------------------------
 chrome.runtime.onInstalled.addListener(() => {
@@ -82,18 +90,54 @@ function makeHooks() {
   };
 }
 
+function makeLegacyHooks(): LegacyHooks {
+  return {
+    submit: (outboundDate, returnDate) =>
+      sendToContent({ type: 'LEGACY_SUBMIT', outboundDate, returnDate }),
+    onRows: (rows: ResultRow[]) => {
+      void appendRows(rows);
+      broadcastToPanels({ type: 'RESULT_ROWS', rows });
+    },
+    onProgress: (progress: SweepProgress) => {
+      lastProgress = progress;
+      broadcastToPanels({ type: 'PROGRESS', progress });
+    },
+    persist: (jobs: SearchJob[], state: SweepRunState, cursor: number, config: SweepConfig) =>
+      void saveSweep({ config, jobs, state, cursor }),
+    setTimer: (ms, fn) => {
+      if (legacyTimer) clearTimeout(legacyTimer);
+      legacyTimer = setTimeout(fn, ms);
+    },
+    clearTimer: () => {
+      if (legacyTimer) clearTimeout(legacyTimer);
+      legacyTimer = null;
+    },
+  };
+}
+
 // --- スイープ制御 --------------------------------------------------------
 async function startSweep(config: SweepConfig): Promise<void> {
   await clearRows();
-  orchestrator = new SweepOrchestrator(makeHooks(), config);
-  void orchestrator.run();
+  if (usesLegacy(config)) {
+    orchestrator = null;
+    legacy = new LegacySweepController(makeLegacyHooks(), config);
+    legacy.start();
+  } else {
+    legacy = null;
+    orchestrator = new SweepOrchestrator(makeHooks(), config);
+    void orchestrator.run();
+  }
 }
 
 async function restoreOrchestrator(): Promise<void> {
   const saved = await loadSweep();
   if (saved && (saved.state === 'running' || saved.state === 'paused' || saved.state === 'blocked')) {
-    orchestrator = new SweepOrchestrator(makeHooks(), saved.config, saved.jobs);
-    // 復元直後は実行しない (ユーザーの Resume を待つ)。running は paused 扱いに。
+    if (usesLegacy(saved.config)) {
+      legacy = new LegacySweepController(makeLegacyHooks(), saved.config, saved.jobs, saved.cursor);
+      // 復元直後は実行しない。次の結果ページ読込 or ユーザーの Resume を待つ。
+    } else {
+      orchestrator = new SweepOrchestrator(makeHooks(), saved.config, saved.jobs);
+    }
   }
 }
 void restoreOrchestrator();
@@ -112,6 +156,10 @@ function handleContentMessage(msg: ContentToSwMessage): void {
     }
     case 'CHALLENGE_DETECTED':
       orchestrator?.block(msg.reason);
+      legacy?.block(msg.reason);
+      break;
+    case 'LEGACY_PAGE_READY':
+      legacy?.onPageReady(msg.outboundDate, msg.returnDate, msg.rows, msg.isResultPage);
       break;
     case 'PAGE_READY':
       // dev capture 状態を新しいページへ伝える
@@ -126,11 +174,12 @@ function handleContentMessage(msg: ContentToSwMessage): void {
 async function snapshot(port: chrome.runtime.Port): Promise<void> {
   const rows = await loadRows();
   const dev = await getDevCapture();
+  const active = orchestrator ?? legacy;
   const progress: SweepProgress =
     lastProgress ??
     ({
-      state: (orchestrator?.getState() ?? 'idle') as SweepRunState,
-      total: orchestrator?.getJobs().length ?? 0,
+      state: (active?.getState() ?? 'idle') as SweepRunState,
+      total: active?.getJobs().length ?? 0,
       done: 0,
       found: 0,
       empty: 0,
@@ -150,17 +199,24 @@ async function handlePanelMessage(msg: PanelToSwMessage, port: chrome.runtime.Po
       break;
     case 'PAUSE':
       orchestrator?.pause();
+      legacy?.pause();
       break;
     case 'RESUME':
       if (orchestrator) void orchestrator.run();
+      legacy?.resume();
       break;
     case 'CANCEL':
       orchestrator?.cancel();
+      legacy?.cancel();
       break;
     case 'RETRY_FAILED':
       if (orchestrator) {
         orchestrator.resetFailed();
         void orchestrator.run();
+      }
+      if (legacy) {
+        legacy.resetFailed();
+        legacy.resume();
       }
       break;
     case 'CLEAR_RESULTS':

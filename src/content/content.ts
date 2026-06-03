@@ -12,6 +12,7 @@ import type {
   SwToContentMessage,
 } from '../core/types';
 import { runSearch } from './page-driver';
+import { isLegacyResultPage, legacySubmit, parseCurrentPage } from './legacy-driver';
 
 const PORT_NAME = 'ana-sweep';
 let port: chrome.runtime.Port | null = null;
@@ -66,8 +67,34 @@ async function handleSwMessage(msg: SwToContentMessage): Promise<void> {
     case 'SET_DEV_CAPTURE':
       setDevCapture(msg.enabled);
       break;
+    case 'LEGACY_SUBMIT': {
+      const ok = legacySubmit(msg.outboundDate, msg.returnDate);
+      if (!ok) {
+        // フォーム投入に失敗 → challenge 扱いで上位に通知 (タイムアウトでも拾われる)
+        send({ type: 'CHALLENGE_DETECTED', reason: '再検索フォームを操作できませんでした' });
+      }
+      break;
+    }
   }
 }
+
+// --- 旧国際線エンジン: 結果ページ読込を SW に報告 -------------------------
+// ページ遷移のたびに content script は再実行される。結果ページなら解析して
+// 現在の日付ペアと行を SW に送る (スイープ制御が次の検索を投入する)。
+function reportLegacyPageIfResult(): void {
+  if (!isLegacyResultPage()) return;
+  const parsed = parseCurrentPage();
+  if (!parsed) return;
+  send({
+    type: 'LEGACY_PAGE_READY',
+    outboundDate: parsed.outboundDate,
+    returnDate: parsed.returnDate,
+    rows: parsed.rows,
+    isResultPage: true,
+  });
+}
+if (document.readyState === 'complete') reportLegacyPageIfResult();
+else window.addEventListener('load', reportLegacyPageIfResult);
 
 // dev capture 状態を SW から取得して同期
 chrome.storage.local.get('devCapture').then((v) => setDevCapture(Boolean(v.devCapture)));

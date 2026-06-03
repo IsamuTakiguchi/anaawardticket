@@ -31,6 +31,11 @@ export interface SweepConfig {
   cabin: Cabin;
   /** スロットル設定 (ms) */
   throttle?: ThrottleConfig;
+  /**
+   * 取得方式。'legacy-intl' = 旧国際線エンジンのページ(DOM)を再検索フォームで
+   * めくる方式 / 'json' = 新エンジンのJSON傍受方式 (将来)。未指定なら type から推定。
+   */
+  engine?: 'legacy-intl' | 'json';
 }
 
 export interface ThrottleConfig {
@@ -136,12 +141,16 @@ export interface PageCaptureMessage {
 export type ContentToSwMessage =
   | { type: 'CAPTURE'; capture: RawCapture }
   | { type: 'PAGE_READY'; url: string }
-  | { type: 'CHALLENGE_DETECTED'; reason: string };
+  | { type: 'CHALLENGE_DETECTED'; reason: string }
+  // 旧国際線エンジン: 結果ページ読込完了。現在の日付ペアと解析済み行を報告
+  | { type: 'LEGACY_PAGE_READY'; outboundDate: string; returnDate: string; rows: ResultRow[]; isResultPage: boolean };
 
 /** service-worker → content */
 export type SwToContentMessage =
   | { type: 'RUN_SEARCH'; job: SearchJob; config: SweepConfig }
-  | { type: 'SET_DEV_CAPTURE'; enabled: boolean };
+  | { type: 'SET_DEV_CAPTURE'; enabled: boolean }
+  // 旧国際線エンジン: 再検索フォームに日付を入れて検索実行 (ページ遷移が起きる)
+  | { type: 'LEGACY_SUBMIT'; outboundDate: string; returnDate: string };
 
 /** panel → service-worker */
 export type PanelToSwMessage =
