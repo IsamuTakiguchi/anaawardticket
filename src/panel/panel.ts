@@ -188,6 +188,11 @@ function readConfig(): SweepConfig {
   // 目的地: チップ(複数)があればそれ、無ければ目的地セレクトの現在値
   const destSel = ($('#dest-select') as HTMLSelectElement).value;
   const dests = selectedDests.length > 0 ? selectedDests.slice() : (destSel ? [destSel] : []);
+  // クラス: チェックされたものすべて (無ければエコノミー)
+  const cabins = Array.from(
+    form.querySelectorAll<HTMLInputElement>('input[name="cabin"]:checked'),
+  ).map((el) => el.value as Cabin);
+  const cabinList = cabins.length > 0 ? cabins : (['ECONOMY'] as Cabin[]);
   return {
     // 路線は空港の組み合わせで決まるため、エンジンは国際線(旧エンジン)固定
     type: 'international',
@@ -198,7 +203,8 @@ function readConfig(): SweepConfig {
     periodEnd: String(fd.get('periodEnd') ?? ''),
     weekdays,
     returnOffsetDays: Number(fd.get('returnOffsetDays') ?? 0),
-    cabin: (fd.get('cabin') as Cabin) ?? 'BUSINESS',
+    cabin: cabinList[0],
+    cabins: cabinList,
     throttle: {
       ...DEFAULT_THROTTLE,
       baseMs: Number(fd.get('baseMs') ?? DEFAULT_THROTTLE.baseMs),
@@ -219,7 +225,8 @@ function updateEstimate(): void {
     const perJob = t.baseMs + t.spreadMs / 2 + 5000;
     const mins = Math.ceil((jobs.length * perJob) / 60000);
     const nDest = cfg.dests?.length ?? 1;
-    let note = `目的地 ${nDest} / 検索 ${jobs.length} 件 / 推定 約${mins}分`;
+    const nCab = cfg.cabins?.length ?? 1;
+    let note = `目的地 ${nDest} / クラス ${nCab} / 検索 ${jobs.length} 件 / 推定 約${mins}分`;
     if (jobs.length > 40) note += ' ⚠ 件数が多いとbot検知リスクが上がります';
     $('#estimate').textContent = note;
   } catch (e) {

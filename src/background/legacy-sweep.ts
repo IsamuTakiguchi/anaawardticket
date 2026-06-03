@@ -117,15 +117,16 @@ export class LegacySweepController {
   }
 
   /** 結果ページ読込完了の通知を受けて次へ進める */
-  onPageReady(outboundDate: string, returnDate: string, dest: string, rows: ResultRow[], isResultPage: boolean): void {
+  onPageReady(outboundDate: string, returnDate: string, dest: string, cabin: string, rows: ResultRow[], isResultPage: boolean): void {
     if (this.state !== 'running') return;
     if (!isResultPage) return; // 検索フォーム等。結果ページのみ扱う
     const job = this.jobs[this.cursor];
     if (!job) return;
     // 期待している目的地・日付ペアと一致するときだけ受理 (ユーザー操作や古いページを無視)
     if (outboundDate !== job.outboundDate || returnDate !== job.returnDate) return;
-    // dest は読めない場合があるため、取得できたときのみ突き合わせる
+    // dest/cabin は読めない場合があるため、取得できたときのみ突き合わせる
     if (dest && job.dest && dest !== job.dest) return;
+    if (cabin && job.cabin && cabin !== job.cabin) return;
 
     this.hooks.clearTimer();
     if (rows.length > 0) {

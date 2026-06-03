@@ -41,8 +41,10 @@ export interface SweepConfig {
   weekdays: Weekday[];
   /** 帰国便オフセット: 出発の何日後に帰るか (0 = 当日, 7 = 1週間後) */
   returnOffsetDays: number;
-  /** 希望キャビン */
+  /** 希望キャビン (単一指定または cabins の先頭) */
   cabin: Cabin;
+  /** 複数キャビン。指定時は cabin×目的地×日付で全組合せをスイープ */
+  cabins?: Cabin[];
   /** スロットル設定 (ms) */
   throttle?: ThrottleConfig;
   /**
@@ -82,6 +84,8 @@ export interface SearchJob {
   returnDate: string;
   /** 目的地空港コード (複数目的地スイープ用) */
   dest: string;
+  /** キャビン (複数キャビンスイープ用) */
+  cabin: Cabin;
   status: JobStatus;
   /** 失敗時の理由 */
   failureReason?: string;
@@ -160,15 +164,15 @@ export type ContentToSwMessage =
   | { type: 'CAPTURE'; capture: RawCapture }
   | { type: 'PAGE_READY'; url: string }
   | { type: 'CHALLENGE_DETECTED'; reason: string }
-  // 旧国際線エンジン: 結果ページ読込完了。現在の日付ペア・目的地と解析済み行を報告
-  | { type: 'LEGACY_PAGE_READY'; outboundDate: string; returnDate: string; dest: string; rows: ResultRow[]; isResultPage: boolean };
+  // 旧国際線エンジン: 結果ページ読込完了。現在の日付ペア・目的地・クラスと解析済み行を報告
+  | { type: 'LEGACY_PAGE_READY'; outboundDate: string; returnDate: string; dest: string; cabin: Cabin; rows: ResultRow[]; isResultPage: boolean };
 
 /** service-worker → content */
 export type SwToContentMessage =
   | { type: 'RUN_SEARCH'; job: SearchJob; config: SweepConfig }
   | { type: 'SET_DEV_CAPTURE'; enabled: boolean }
-  // 旧国際線エンジン: 再検索フォームに日付(と路線)を入れて検索実行 (ページ遷移が起きる)
-  | { type: 'LEGACY_SUBMIT'; outboundDate: string; returnDate: string; depart?: string; dest?: string };
+  // 旧国際線エンジン: 再検索フォームに日付(と路線・クラス)を入れて検索実行 (ページ遷移が起きる)
+  | { type: 'LEGACY_SUBMIT'; outboundDate: string; returnDate: string; depart?: string; dest?: string; cabin?: Cabin };
 
 /** panel → service-worker */
 export type PanelToSwMessage =

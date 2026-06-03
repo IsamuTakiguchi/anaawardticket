@@ -117,6 +117,7 @@ function makeLegacyHooks(config: SweepConfig): LegacyHooks {
         returnDate: job.returnDate,
         depart: config.depart,
         dest: job.dest || config.dest,
+        cabin: job.cabin || config.cabin,
       } as const;
       sendToAnaTabs(msg); // Port が切れていても届く確実な経路
       sendToContent(msg); // 接続中の Port にも (冗長)
@@ -193,7 +194,7 @@ function handleContentMessage(msg: ContentToSwMessage): void {
       legacy?.block(msg.reason);
       break;
     case 'LEGACY_PAGE_READY':
-      legacy?.onPageReady(msg.outboundDate, msg.returnDate, msg.dest, msg.rows, msg.isResultPage);
+      legacy?.onPageReady(msg.outboundDate, msg.returnDate, msg.dest, msg.cabin, msg.rows, msg.isResultPage);
       break;
     case 'PAGE_READY':
       // dev capture 状態を新しいページへ伝える

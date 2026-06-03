@@ -61,14 +61,14 @@ export function enumerateOutboundDates(
   return out;
 }
 
-/** 安定したジョブ ID (目的地 + 往路日 + 復路日) */
-export function jobId(dest: string, outboundDate: string, returnDate: string): string {
-  return `${dest}_${outboundDate}_${returnDate}`;
+/** 安定したジョブ ID (目的地 + クラス + 往路日 + 復路日) */
+export function jobId(dest: string, cabin: string, outboundDate: string, returnDate: string): string {
+  return `${dest}_${cabin}_${outboundDate}_${returnDate}`;
 }
 
 /**
  * SweepConfig から検索ジョブ列を生成する。
- * 目的地 (dests があれば全て、なければ dest) × 出発日 の全組合せを作り、
+ * キャビン (cabins or cabin) × 目的地 (dests or dest) × 出発日 の全組合せを作り、
  * 各出発日に returnOffsetDays を加算した復路日をペアにする。
  */
 export function buildJobMatrix(config: SweepConfig): SearchJob[] {
@@ -81,18 +81,22 @@ export function buildJobMatrix(config: SweepConfig): SearchJob[] {
     config.weekdays,
   );
   const dests = config.dests && config.dests.length > 0 ? config.dests : [config.dest];
+  const cabins = config.cabins && config.cabins.length > 0 ? config.cabins : [config.cabin];
   const jobs: SearchJob[] = [];
-  for (const dest of dests) {
-    for (const outboundDate of outbounds) {
-      const returnDate = addDays(outboundDate, config.returnOffsetDays);
-      jobs.push({
-        id: jobId(dest, outboundDate, returnDate),
-        outboundDate,
-        returnDate,
-        dest,
-        status: 'pending',
-        attempts: 0,
-      });
+  for (const cabin of cabins) {
+    for (const dest of dests) {
+      for (const outboundDate of outbounds) {
+        const returnDate = addDays(outboundDate, config.returnOffsetDays);
+        jobs.push({
+          id: jobId(dest, cabin, outboundDate, returnDate),
+          outboundDate,
+          returnDate,
+          dest,
+          cabin,
+          status: 'pending',
+          attempts: 0,
+        });
+      }
     }
   }
   return jobs;

@@ -14,6 +14,9 @@ import type { AnaAirportList, Cabin, ResultRow } from '../core/types';
 const CFF_CABIN: Record<string, Cabin> = {
   CFF1: 'ECONOMY', CFF4: 'PREMIUM_ECONOMY', CFF2: 'BUSINESS', CFF3: 'FIRST',
 };
+const CABIN_CFF: Record<Cabin, string> = {
+  ECONOMY: 'CFF1', PREMIUM_ECONOMY: 'CFF4', BUSINESS: 'CFF2', FIRST: 'CFF3',
+};
 
 export function isLegacyResultPage(): boolean {
   return (
@@ -73,12 +76,12 @@ export function readSearchCriteria(): { outboundDate: string; returnDate: string
   return null;
 }
 
-/** 現在の結果ページを解析して行・日付・目的地を返す */
-export function parseCurrentPage(): { outboundDate: string; returnDate: string; dest: string; rows: ResultRow[] } | null {
+/** 現在の結果ページを解析して行・日付・目的地・クラスを返す */
+export function parseCurrentPage(): { outboundDate: string; returnDate: string; dest: string; cabin: Cabin; rows: ResultRow[] } | null {
   const ctx = readSearchCriteria();
   if (!ctx || !ctx.outboundDate || !ctx.returnDate) return null;
   const rows = parseLegacyIntlResult(document, ctx);
-  return { outboundDate: ctx.outboundDate, returnDate: ctx.returnDate, dest: ctx.dest, rows };
+  return { outboundDate: ctx.outboundDate, returnDate: ctx.returnDate, dest: ctx.dest, cabin: ctx.cabin, rows };
 }
 
 /**
@@ -125,6 +128,7 @@ export function legacySubmit(
   returnDate: string,
   depart?: string,
   dest?: string,
+  cabin?: Cabin,
 ): boolean {
   const TAG = '[ana-sweep:legacy]';
   const out = outboundDate.replace(/-/g, '');
@@ -143,6 +147,12 @@ export function legacySubmit(
   if (dest) {
     const ok = setInput('arrivalAirportCode:field', dest);
     console.info(`${TAG} 目的地投入 ${dest} (field=${ok})`);
+  }
+  // キャビン (特典種別 CFF コード) も指定されていれば boardingClass を更新
+  if (cabin) {
+    const cff = CABIN_CFF[cabin];
+    const ok = setInput('boardingClass', cff);
+    console.info(`${TAG} クラス投入 ${cabin}/${cff} (field=${ok})`);
   }
   console.info(`${TAG} 日付投入 out=${out} ret=${ret} (depField=${okOut}, retField=${okRet})`);
   if (!okOut || !okRet) {

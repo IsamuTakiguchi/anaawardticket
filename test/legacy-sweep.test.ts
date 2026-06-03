@@ -67,13 +67,13 @@ describe('LegacySweepController', () => {
     const c = new LegacySweepController(h.hooks, config);
     c.start();
     // job0
-    c.onPageReady('2026-11-05', '2026-11-08', 'GUM', [row('2026-11-05', '2026-11-08')], true);
+    c.onPageReady('2026-11-05', '2026-11-08', 'GUM', 'ECONOMY', [row('2026-11-05', '2026-11-08')], true);
     h.runTimers(); // throttle 経過 → job1 投入
     // job1
-    c.onPageReady('2026-11-06', '2026-11-09', 'GUM', [], true); // 空席なし
+    c.onPageReady('2026-11-06', '2026-11-09', 'GUM', 'ECONOMY', [], true); // 空席なし
     h.runTimers();
     // job2
-    c.onPageReady('2026-11-07', '2026-11-10', 'GUM', [row('2026-11-07', '2026-11-10')], true);
+    c.onPageReady('2026-11-07', '2026-11-10', 'GUM', 'ECONOMY', [row('2026-11-07', '2026-11-10')], true);
     expect(c.getState()).toBe('done');
     expect(h.submits.map((s) => s.out)).toEqual(['2026-11-05', '2026-11-06', '2026-11-07']);
     expect(h.rows).toHaveLength(2); // 空席なしの job1 は行なし
@@ -85,7 +85,7 @@ describe('LegacySweepController', () => {
     const h = harness();
     const c = new LegacySweepController(h.hooks, config);
     c.start();
-    c.onPageReady('2099-01-01', '2099-01-04', 'GUM', [row('x', 'y')], true);
+    c.onPageReady('2099-01-01', '2099-01-04', 'GUM', 'ECONOMY', [row('x', 'y')], true);
     expect(c.getJobs()[0].status).toBe('running'); // 進んでいない
     expect(h.rows).toHaveLength(0);
   });
@@ -107,7 +107,7 @@ describe('LegacySweepController', () => {
     const h = harness();
     const c = new LegacySweepController(h.hooks, config);
     c.start();
-    c.onPageReady('2026-11-05', '2026-11-08', 'GUM', [], true);
+    c.onPageReady('2026-11-05', '2026-11-08', 'GUM', 'ECONOMY', [], true);
     c.pause();
     h.runTimers(); // throttle が来ても running でないので投入しない
     expect(c.getState()).toBe('paused');

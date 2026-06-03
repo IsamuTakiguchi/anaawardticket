@@ -49,15 +49,14 @@
           <label>帰国オフセット (日後)
             <input type="number" name="returnOffsetDays" value="7" min="0" max="30" required />
           </label>
-          <label>キャビン
-            <select name="cabin">
-              <option value="ECONOMY">エコノミー</option>
-              <option value="PREMIUM_ECONOMY">プレミアムエコノミー</option>
-              <option value="BUSINESS" selected>ビジネス</option>
-              <option value="FIRST">ファースト</option>
-            </select>
-          </label>
         </div>
+        <fieldset>
+          <legend>クラス (複数選択可)</legend>
+          <label><input type="checkbox" name="cabin" value="ECONOMY" checked />エコノミー</label>
+          <label><input type="checkbox" name="cabin" value="PREMIUM_ECONOMY" />プレエコ</label>
+          <label><input type="checkbox" name="cabin" value="BUSINESS" />ビジネス</label>
+          <label><input type="checkbox" name="cabin" value="FIRST" />ファースト</label>
+        </fieldset>
         <details class="advanced">
           <summary>詳細 (検索間隔)</summary>
           <div class="row">

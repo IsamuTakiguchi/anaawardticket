@@ -69,7 +69,7 @@ async function handleSwMessage(msg: SwToContentMessage): Promise<void> {
       break;
     case 'LEGACY_SUBMIT': {
       console.info('[ana-sweep] LEGACY_SUBMIT 受信', msg.outboundDate, msg.returnDate);
-      const ok = legacySubmit(msg.outboundDate, msg.returnDate, msg.depart, msg.dest);
+      const ok = legacySubmit(msg.outboundDate, msg.returnDate, msg.depart, msg.dest, msg.cabin);
       if (!ok) {
         // フォーム投入に失敗 → challenge 扱いで上位に通知 (タイムアウトでも拾われる)
         send({ type: 'CHALLENGE_DETECTED', reason: '再検索フォームを操作できませんでした' });
@@ -102,12 +102,13 @@ function reportLegacyPageIfResult(): void {
     return;
   }
   const noResults = isNoResultsPage();
-  console.info(`[ana-sweep] ページ報告 ${parsed.dest} ${parsed.outboundDate}→${parsed.returnDate} 行数=${parsed.rows.length}${noResults ? ' (空席なし)' : ''}`);
+  console.info(`[ana-sweep] ページ報告 ${parsed.dest} ${parsed.cabin} ${parsed.outboundDate}→${parsed.returnDate} 行数=${parsed.rows.length}${noResults ? ' (空席なし)' : ''}`);
   send({
     type: 'LEGACY_PAGE_READY',
     outboundDate: parsed.outboundDate,
     returnDate: parsed.returnDate,
     dest: parsed.dest,
+    cabin: parsed.cabin,
     rows: parsed.rows,
     isResultPage: true,
   });
