@@ -222,6 +222,12 @@ $('#btn-dl-captures').addEventListener('click', () => {
 $('#btn-clear-captures').addEventListener('click', () => {
   chrome.runtime.sendMessage({ type: 'CLEAR_RAW_CAPTURES' }, () => refreshCaptureList());
 });
+$('#btn-dl-html').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ type: 'GET_PAGE_HTML' }, (res) => {
+    if (!res || res.error) return alert('取得失敗: ' + (res?.error ?? '不明') + (res?.url ? `\n現在のタブ: ${res.url}` : ''));
+    downloadText(`ana-page-${Date.now()}.html`, res.html, 'text/html');
+  });
+});
 function refreshCaptureList(): void {
   chrome.runtime.sendMessage({ type: 'GET_RAW_CAPTURES' }, (res) => {
     const caps: RawCapture[] = res?.captures ?? [];

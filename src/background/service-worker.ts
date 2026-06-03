@@ -201,5 +201,26 @@ chrome.runtime.onMessage.addListener((req, _sender, sendResponse) => {
     void clearRawCaptures().then(() => sendResponse({ ok: true }));
     return true;
   }
+  if (req?.type === 'GET_PAGE_HTML') {
+    // アクティブな ANA タブの DOM (サーバーレンダリングされた結果ページ) を取得。
+    // 旧エンジンは結果を HTML に埋め込むため、DOM 解析の元データとして使う。
+    void (async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tab?.id) return sendResponse({ error: 'アクティブなタブが見つかりません' });
+        if (!/(^https:\/\/aswbe)/.test(tab.url ?? '')) {
+          return sendResponse({ error: 'ANA予約サイト(aswbe)のタブをアクティブにしてください', url: tab.url });
+        }
+        const [res] = await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          func: () => ({ url: location.href, html: document.documentElement.outerHTML }),
+        });
+        sendResponse(res?.result ?? { error: '取得に失敗しました' });
+      } catch (e) {
+        sendResponse({ error: String(e) });
+      }
+    })();
+    return true;
+  }
   return false;
 });
