@@ -57,9 +57,20 @@ ANA の内部 API スキーマと DOM 構造は**非公開**のため、以下�
 3. 「キャプチャをJSONでダウンロード」で、ANA ドメインの全 fetch/XHR 記録を取得
 4. どの呼び出しが空席照会レスポンスかを特定し、フィールド名（必要マイル・燃油・運航会社・時刻）を確認
 5. 以下を実データに合わせて更新:
+   - `src/core/field-keys.ts` … 実際の JSON キー名を各候補配列の**先頭**に追記（全アダプタが追従）
    - `src/core/endpoints.ts` … 空席照会 URL の判定パターンを厳格化
-   - `src/core/adapter.ts`（`RawAvailability*` 型と取り出し箇所）… 実フィールド名へ
    - `src/content/page-driver.ts`（`SELECTORS`）… フォーム自動入力のセレクタ。未設定の間は**手動検索モード**（ユーザーが手動検索し、傍受のみ行う）で動作します
+
+### 実機キャプチャの着眼点（調査メモ）
+
+ANA は 2025 年に予約エンジンを刷新済み。新エンジンは JS の SPA で、内部 JSON API は公開されていません（旧 `aswbe-i.ana.co.jp/international_asw/*.xhtml` は HTML レンダリングで対象外）。確認済みの新エンジンルート：
+
+- `/webapps/reservation/roundtrip-flight-availability-international`
+- `/webapps/reservation/flight-search`
+- `/webapps/reservation/plan-list`
+- **国際線アワードカレンダー（6ヶ月グリッド）** … 日付別空席を返す JSON XHR の最有力候補。まずここを DevTools の Network(Fetch/XHR) で観察するのが近道
+
+クエリには `CONNECTION_KIND`（例 `JPN`/`LAX`/`ZZZ`）・`LANG`（`ja`/`en`）が付きます。応答 JSON では概ね次の名前が想定されます（`field-keys.ts` に候補登録済み）：必要マイル `requiredMiles`/`mileage`/`award`、燃油・税 `fuelSurcharge`/`YQ`/`tax`/`totalAmount`、運航/便名 `operatingCarrier`/`marketingCarrier`/`operatingFlightNumber`。運航会社フィールドが無い場合は**便名先頭2文字**（`NH###`=ANA、`UA`/`LH` 等=提携）で判定するフォールバックを実装済みです。キャビンは ANA 特典運賃コード `FS/CS/WS/YS` にも対応済み。
 
 ## 開発
 

@@ -31,13 +31,17 @@ export function operatorTypeOf(operatingCarriers: string[]): OperatorType {
   return hasPartner ? 'PARTNER' : 'ANA';
 }
 
-/** ANA 内部キャビンコード/表記 → Cabin。未知は ECONOMY にフォールバック */
+/**
+ * ANA 内部キャビンコード/表記 → Cabin。未知は ECONOMY にフォールバック。
+ * ANA の特典運賃区分コード (FS/CS/WS/YS = First/Business/Premium economy/Economy
+ * の各 "saver" award) にも対応 (flightplan nh エンジンより)。
+ */
 export function normalizeCabin(raw: unknown): Cabin {
   const s = String(raw ?? '').toUpperCase();
-  if (/(FIRST|FST|^F$|ファースト)/.test(s)) return 'FIRST';
-  if (/(BUSINESS|BIZ|^[CJ]$|ビジネス)/.test(s)) return 'BUSINESS';
-  if (/(PREMIUM|^[WE]$|プレミアム)/.test(s)) return 'PREMIUM_ECONOMY';
-  return 'ECONOMY';
+  if (/(^FS$|FIRST|FST|^F$|ファースト)/.test(s)) return 'FIRST';
+  if (/(^CS$|BUSINESS|BIZ|^[CJ]$|ビジネス)/.test(s)) return 'BUSINESS';
+  if (/(^WS$|PREMIUM|^[WE]$|プレミアム|プレエコ)/.test(s)) return 'PREMIUM_ECONOMY';
+  return 'ECONOMY'; // YS / Y / その他
 }
 
 /**
@@ -55,14 +59,25 @@ export function normalizeSurcharge(
 
 /**
  * 様々な時刻表記を "YYYY-MM-DDTHH:mm" へ寄せる。
- * date(YYYY-MM-DD) と time("0930" / "09:30") から組み立てるケースに対応。
+ * 対応する入力例:
+ *   - 完全な ISO 日時 "2026-09-10T21:25:00" / "2026-09-10 21:25"
+ *   - "09:30"
+ *   - "0930" / "930"
+ * 完全日時が来た場合はその日付を優先し、無ければ fallbackDate を使う。
  */
-export function combineDateTime(date: string, time: unknown): string {
-  const t = String(time ?? '').replace(/[^0-9]/g, '');
-  if (t.length >= 4) {
-    const hh = t.slice(0, 2);
-    const mm = t.slice(2, 4);
-    return `${date}T${hh}:${mm}`;
+export function combineDateTime(fallbackDate: string, time: unknown): string {
+  const s = String(time ?? '');
+  // 完全な日時 (日付込み)
+  const iso = /(\d{4}-\d{2}-\d{2})[T ](\d{1,2}):?(\d{2})/.exec(s);
+  if (iso) return `${iso[1]}T${iso[2].padStart(2, '0')}:${iso[3]}`;
+  // HH:mm
+  const hm = /(\d{1,2}):(\d{2})/.exec(s);
+  if (hm) return `${fallbackDate}T${hm[1].padStart(2, '0')}:${hm[2]}`;
+  // HHMM / HMM (連続数字)
+  const digits = s.replace(/[^0-9]/g, '');
+  if (digits.length >= 3) {
+    const padded = digits.padStart(4, '0').slice(0, 4);
+    return `${fallbackDate}T${padded.slice(0, 2)}:${padded.slice(2, 4)}`;
   }
-  return `${date}T00:00`;
+  return `${fallbackDate}T00:00`;
 }

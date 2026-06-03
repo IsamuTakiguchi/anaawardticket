@@ -7,6 +7,12 @@
 
 import type { AwardType } from './types';
 
+// ANA 新エンジン (2025〜) の確認済み SPA ルート (調査による):
+//   /webapps/reservation/roundtrip-flight-availability-international
+//   /webapps/reservation/flight-search
+//   /webapps/reservation/plan-list
+//   国際線アワードカレンダー (6ヶ月グリッド) が JSON XHR の最有力候補
+// 実際のデータ XHR パスは非公開のため、dev capture で確認後に厳格化する。
 /** 空席照会らしき URL を示すパターン (緩め)。dev で確認後に厳格化する */
 const AVAILABILITY_HINTS = [
   /availab/i,
@@ -14,6 +20,10 @@ const AVAILABILITY_HINTS = [
   /award/i,
   /flight-?search/i,
   /searchFlight/i,
+  /roundtrip/i,
+  /calendar/i,
+  /plan-?list/i,
+  /webapps\/reservation/i,
   /booking\/.*search/i,
   /空席/,
 ];
