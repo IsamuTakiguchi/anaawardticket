@@ -68,6 +68,7 @@ async function handleSwMessage(msg: SwToContentMessage): Promise<void> {
       setDevCapture(msg.enabled);
       break;
     case 'LEGACY_SUBMIT': {
+      console.info('[ana-sweep] LEGACY_SUBMIT 受信', msg.outboundDate, msg.returnDate);
       const ok = legacySubmit(msg.outboundDate, msg.returnDate);
       if (!ok) {
         // フォーム投入に失敗 → challenge 扱いで上位に通知 (タイムアウトでも拾われる)
@@ -82,9 +83,14 @@ async function handleSwMessage(msg: SwToContentMessage): Promise<void> {
 // ページ遷移のたびに content script は再実行される。結果ページなら解析して
 // 現在の日付ペアと行を SW に送る (スイープ制御が次の検索を投入する)。
 function reportLegacyPageIfResult(): void {
+  console.info('[ana-sweep] content script 稼働中:', location.href, '/ 旧国際線結果ページ=', isLegacyResultPage());
   if (!isLegacyResultPage()) return;
   const parsed = parseCurrentPage();
-  if (!parsed) return;
+  if (!parsed) {
+    console.warn('[ana-sweep] 結果ページだが解析に失敗 (検索条件を読めず)');
+    return;
+  }
+  console.info(`[ana-sweep] 結果ページ報告 ${parsed.outboundDate}→${parsed.returnDate} 行数=${parsed.rows.length}`);
   send({
     type: 'LEGACY_PAGE_READY',
     outboundDate: parsed.outboundDate,

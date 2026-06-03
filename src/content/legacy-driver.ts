@@ -73,8 +73,10 @@ function setInput(id: string, value: string): boolean {
 /**
  * 再検索フォームに往路/復路日付(YYYY-MM-DD)を入れて検索を実行する。
  * ページ遷移(POST)が発生する。成功裡に投入できたら true。
+ * 実機差異の切り分けのため各ステップを console に出力する。
  */
 export function legacySubmit(outboundDate: string, returnDate: string): boolean {
+  const TAG = '[ana-sweep:legacy]';
   const out = outboundDate.replace(/-/g, '');
   const ret = returnDate.replace(/-/g, '');
   // 投稿される hidden の日付フィールド (権威) を更新
@@ -83,13 +85,31 @@ export function legacySubmit(outboundDate: string, returnDate: string): boolean 
   // 表示用テキストも更新 (バリデーション対策。失敗しても致命的でない)
   setInput('awardDepartureDate:field_pctext', out);
   setInput('awardReturnDate:field_pctext', ret);
-  if (!okOut || !okRet) return false;
+  console.info(`${TAG} 日付投入 out=${out} ret=${ret} (depField=${okOut}, retField=${okRet})`);
+  if (!okOut || !okRet) {
+    console.warn(`${TAG} 日付の hidden フィールドが見つかりません`);
+    return false;
+  }
 
   // #displaySearchModal 内の「検索する」submit を探してクリック
   const modal = document.getElementById('displaySearchModal');
   const submits = Array.from(modal?.querySelectorAll<HTMLInputElement>('input[type="submit"]') ?? []);
-  const searchBtn = submits.find((b) => /検索する/.test(b.value));
-  if (!searchBtn) return false;
-  searchBtn.click();
-  return true;
+  console.info(`${TAG} modal内のsubmit候補: ` + submits.map((b) => b.value).join(' | '));
+  const searchBtn = submits.find((b) => /検索/.test(b.value));
+  if (searchBtn) {
+    console.info(`${TAG} 「${searchBtn.value}」をクリックします`);
+    searchBtn.click();
+    return true;
+  }
+
+  // フォールバック: JSF の再検索リンク (#toRoundTrip) を起動して reSearchForm を送信
+  const anchor = document.getElementById('toRoundTrip') as HTMLAnchorElement | null;
+  if (anchor) {
+    console.info(`${TAG} 検索ボタンが見つからないため #toRoundTrip で送信します`);
+    anchor.click();
+    return true;
+  }
+
+  console.warn(`${TAG} 検索ボタン/再検索リンクが見つかりません`);
+  return false;
 }
