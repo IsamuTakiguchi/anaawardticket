@@ -122,44 +122,29 @@ const NUM = (s: string) => {
 };
 
 /**
- * addFormatedRecommendation(...) から表示用の税金・料金(円)を順番に抽出する。
- * 例: 引数中の '0円～' / '15,400円～' → 0 / 15400。addRecommendation と同順で対応。
+ * 埋め込みJSの addRecommendation(...) を抽出。
+ * 引数 (実データより): (rank, 往路ID, 復路ID, 往路FF, 復路FF, null, null,
+ *   税金料金等[円], bool, _, _, 必要マイル, rule, rule, 往路席, 復路席, ...)
+ * ※「税金・料金等」(燃油サーチャージ込みの合計, 円) は index 7。
  */
-function parseFormattedTax(scriptText: string): number[] {
-  const out: number[] = [];
-  const re = /addFormatedRecommendation\(([\s\S]*?)\);/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(scriptText)) !== null) {
-    const yen = /([\d,]+)\s*円/.exec(m[1]);
-    out.push(yen ? NUM(yen[1]) : 0);
-  }
-  return out;
-}
-
-/** 埋め込みJSの addRecommendation(...) を抽出 (税金は表示文字列を優先) */
 function parseRecommendations(scriptText: string): Recommendation[] {
-  const formattedTax = parseFormattedTax(scriptText);
   const recs: Recommendation[] = [];
   const re = /addRecommendation\(([\s\S]*?)\);/g;
   let m: RegExpExecArray | null;
-  let i = 0;
   while ((m = re.exec(scriptText)) !== null) {
     const argsStr = m[1];
     // segmentInfoList の配列(末尾) より前の引数だけを使う
     const head = argsStr.slice(0, argsStr.indexOf('['));
     const tokens = (head === '' ? argsStr : head).split(',').map((t) => t.trim());
     if (tokens.length < 17) continue;
-    // 税金・料金: 表示文字列(円)を優先、無ければ数値引数(index16)
-    const taxYen = i < formattedTax.length ? formattedTax[i] : NUM(tokens[16]);
     recs.push({
       outboundId: tokens[1].replace(/['"]/g, ''),
       inboundId: tokens[2].replace(/['"]/g, ''),
       requiredMiles: NUM(tokens[11]),
       outboundSeats: tokens[14] !== undefined ? NUM(tokens[14]) : null,
       inboundSeats: tokens[15] !== undefined ? NUM(tokens[15]) : null,
-      taxYen,
+      taxYen: NUM(tokens[7]), // 税金・料金等 (円)
     });
-    i++;
   }
   return recs;
 }

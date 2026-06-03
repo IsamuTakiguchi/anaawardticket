@@ -35,9 +35,11 @@ describe('parseLegacyIntlResult (旧国際線エンジン)', () => {
     expect(r2.inbound.operatorType).toBe('PARTNER');
   });
 
-  it('税金・料金(表示の円)をサーチャージとして取得、0 は null', () => {
-    expect(rows.find((r) => r.id === '0_0')!.fuelSurcharge).toBeNull();
-    expect(rows.find((r) => r.id === '0_2')!.fuelSurcharge).toEqual({ amount: 5000, currency: 'JPY' });
+  it('税金・料金等(円, index7)を税金・燃油として取得', () => {
+    // 往復UA: 税金・料金等 45,650円
+    expect(rows.find((r) => r.id === '0_0')!.fuelSurcharge).toEqual({ amount: 45650, currency: 'JPY' });
+    expect(rows.find((r) => r.id === '0_2')!.fuelSurcharge).toEqual({ amount: 46400, currency: 'JPY' });
+    expect(rows.find((r) => r.id === '1_0')!.fuelSurcharge).toEqual({ amount: 68660, currency: 'JPY' });
   });
 
   it('運航航空会社名を取得 (ANA運航便アイコン/○○運航テキスト)', () => {
