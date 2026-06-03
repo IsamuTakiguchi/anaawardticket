@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ANA特典航空券スイープ検索</title>
+    <link rel="stylesheet" href="./panel.css" />
+  </head>
+  <body>
+    <header>
+      <h1>ANA特典航空券スイープ検索</h1>
+      <nav class="tabs">
+        <button data-tab="search" class="active">検索</button>
+        <button data-tab="results">結果</button>
+        <button data-tab="dev">Dev</button>
+      </nav>
+    </header>
+
+    <!-- 検索条件 -->
+    <section id="tab-search" class="tab-panel active">
+      <form id="sweep-form">
+        <fieldset>
+          <legend>路線</legend>
+          <label><input type="radio" name="type" value="international" checked /> 国際線</label>
+          <label><input type="radio" name="type" value="domestic" /> 国内線</label>
+        </fieldset>
+        <div class="row">
+          <label>出発空港 <input name="depart" placeholder="HND" required /></label>
+          <label>目的地 <input name="dest" placeholder="HNL" required /></label>
+        </div>
+        <div class="row">
+          <label>期間開始 <input type="date" name="periodStart" required /></label>
+          <label>期間終了 <input type="date" name="periodEnd" required /></label>
+        </div>
+        <fieldset>
+          <legend>出発曜日 (未選択で全曜日)</legend>
+          <label><input type="checkbox" name="wd" value="0" />日</label>
+          <label><input type="checkbox" name="wd" value="1" />月</label>
+          <label><input type="checkbox" name="wd" value="2" />火</label>
+          <label><input type="checkbox" name="wd" value="3" />水</label>
+          <label><input type="checkbox" name="wd" value="4" />木</label>
+          <label><input type="checkbox" name="wd" value="5" />金</label>
+          <label><input type="checkbox" name="wd" value="6" />土</label>
+        </fieldset>
+        <div class="row">
+          <label>帰国オフセット (日後)
+            <input type="number" name="returnOffsetDays" value="7" min="0" max="30" required />
+          </label>
+          <label>キャビン
+            <select name="cabin">
+              <option value="ECONOMY">エコノミー</option>
+              <option value="PREMIUM_ECONOMY">プレミアムエコノミー</option>
+              <option value="BUSINESS" selected>ビジネス</option>
+              <option value="FIRST">ファースト</option>
+            </select>
+          </label>
+        </div>
+        <details class="advanced">
+          <summary>詳細 (検索間隔)</summary>
+          <div class="row">
+            <label>基本待機(ms) <input type="number" name="baseMs" value="4000" min="1000" /></label>
+            <label>ゆらぎ上限(ms) <input type="number" name="spreadMs" value="3000" min="0" /></label>
+          </div>
+        </details>
+        <p id="estimate" class="estimate"></p>
+        <div class="controls">
+          <button type="submit" id="btn-start">スイープ開始</button>
+          <button type="button" id="btn-pause" disabled>一時停止</button>
+          <button type="button" id="btn-resume" disabled>再開</button>
+          <button type="button" id="btn-cancel" disabled>中止</button>
+        </div>
+      </form>
+      <div id="progress" class="progress"></div>
+    </section>
+
+    <!-- 結果 -->
+    <section id="tab-results" class="tab-panel">
+      <div class="filters">
+        <label>運航
+          <select id="f-operator">
+            <option value="all">すべて</option>
+            <option value="ANA">ANAのみ</option>
+            <option value="PARTNER">提携のみ</option>
+          </select>
+        </label>
+        <label>キャビン
+          <select id="f-cabin">
+            <option value="all">すべて</option>
+            <option value="ECONOMY">エコノミー</option>
+            <option value="PREMIUM_ECONOMY">プレエコ</option>
+            <option value="BUSINESS">ビジネス</option>
+            <option value="FIRST">ファースト</option>
+          </select>
+        </label>
+        <label>最大マイル <input type="number" id="f-maxmiles" placeholder="上限なし" min="0" /></label>
+        <label><input type="checkbox" id="f-surcharge-free" /> 燃油なしのみ</label>
+        <button id="btn-csv">CSV出力</button>
+        <button id="btn-clear">結果クリア</button>
+      </div>
+      <div id="results"></div>
+    </section>
+
+    <!-- Dev capture -->
+    <section id="tab-dev" class="tab-panel">
+      <p class="note">
+        Dev capture を ON にすると ANA ドメインの全 fetch/XHR を記録します。ログイン状態で
+        手動検索を 1 回行い、JSON をダウンロードして空席照会の応答構造を特定してください。
+      </p>
+      <label class="toggle"><input type="checkbox" id="dev-toggle" /> Dev capture を有効化</label>
+      <div class="controls">
+        <button id="btn-dl-captures">キャプチャをJSONでダウンロード</button>
+        <button id="btn-clear-captures">キャプチャ消去</button>
+      </div>
+      <div id="capture-list"></div>
+    </section>
+
+    <script type="module" src="./panel.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+{
+  "manifest_version": 3,
+  "name": "ANA特典航空券スイープ検索",
+  "version": "0.1.0",
+  "description": "ANA特典航空券の空席を期間・曜日・帰国オフセット条件で一括検索し、ANA/提携便・時刻・必要マイル・燃油サーチャージを一覧表示します。",
+  "minimum_chrome_version": "114",
+  "permissions": ["storage", "sidePanel", "tabs", "scripting"],
+  "host_permissions": [
+    "https://aswbe.ana.co.jp/*",
+    "https://*.ana.co.jp/*"
+  ],
+  "background": {
+    "service_worker": "src/background/service-worker.ts",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "src/panel/index.html"
+  },
+  "action": {
+    "default_title": "ANA特典航空券スイープ検索を開く"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://aswbe.ana.co.jp/*"],
+      "js": ["src/main-world/interceptor.ts"],
+      "run_at": "document_start",
+      "world": "MAIN"
+    },
+    {
+      "matches": ["https://aswbe.ana.co.jp/*"],
+      "js": ["src/content/content.ts"],
+      "run_at": "document_start",
+      "world": "ISOLATED"
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}

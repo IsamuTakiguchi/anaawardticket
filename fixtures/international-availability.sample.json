@@ -1,0 +1,78 @@
+{
+  "awardType": "international",
+  "pricing": {
+    "requiredMiles": 75000,
+    "fuelSurcharge": { "amount": 0, "currency": "JPY" }
+  },
+  "outbound": {
+    "date": "2026-09-10",
+    "options": [
+      {
+        "available": true,
+        "seats": 4,
+        "cabin": "BUSINESS",
+        "segments": [
+          {
+            "marketingCarrier": "NH",
+            "operatingCarrier": "NH",
+            "flightNumber": "182",
+            "from": "HND",
+            "to": "HNL",
+            "departureTime": "2125",
+            "arrivalTime": "1015",
+            "cabin": "BUSINESS"
+          }
+        ]
+      },
+      {
+        "available": true,
+        "seats": 2,
+        "cabin": "BUSINESS",
+        "segments": [
+          {
+            "marketingCarrier": "NH",
+            "operatingCarrier": "UA",
+            "flightNumber": "8",
+            "from": "HND",
+            "to": "SFO",
+            "departureTime": "1700",
+            "arrivalTime": "1010",
+            "cabin": "BUSINESS"
+          },
+          {
+            "marketingCarrier": "UA",
+            "operatingCarrier": "UA",
+            "flightNumber": "1759",
+            "from": "SFO",
+            "to": "HNL",
+            "departureTime": "1230",
+            "arrivalTime": "1500",
+            "cabin": "BUSINESS"
+          }
+        ]
+      }
+    ]
+  },
+  "inbound": {
+    "date": "2026-09-17",
+    "options": [
+      {
+        "available": true,
+        "seats": 6,
+        "cabin": "BUSINESS",
+        "segments": [
+          {
+            "marketingCarrier": "NH",
+            "operatingCarrier": "NH",
+            "flightNumber": "183",
+            "from": "HNL",
+            "to": "HND",
+            "departureTime": "1145",
+            "arrivalTime": "1620",
+            "cabin": "BUSINESS"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "awardType": "domestic",
+  "outbound": {
+    "date": "2026-07-18",
+    "options": [
+      {
+        "available": true,
+        "seats": 9,
+        "requiredMiles": 7500,
+        "cabin": "ECONOMY",
+        "segments": [
+          {
+            "marketingCarrier": "NH",
+            "operatingCarrier": "NH",
+            "flightNumber": "985",
+            "from": "HND",
+            "to": "OKA",
+            "departureTime": "0805",
+            "arrivalTime": "1100",
+            "cabin": "ECONOMY"
+          }
+        ]
+      }
+    ]
+  },
+  "inbound": {
+    "date": "2026-07-21",
+    "options": [
+      {
+        "available": true,
+        "seats": 5,
+        "requiredMiles": 7500,
+        "cabin": "ECONOMY",
+        "segments": [
+          {
+            "marketingCarrier": "NH",
+            "operatingCarrier": "NH",
+            "flightNumber": "996",
+            "from": "OKA",
+            "to": "HND",
+            "departureTime": "1810",
+            "arrivalTime": "2025",
+            "cabin": "ECONOMY"
+          }
+        ]
+      }
+    ]
+  }
+}
