@@ -9,7 +9,7 @@
 // ===========================================================================
 
 import { parseLegacyIntlResult } from '../core/legacy-intl-parser';
-import type { Cabin, ResultRow } from '../core/types';
+import type { AnaAirportList, Cabin, ResultRow } from '../core/types';
 
 const CFF_CABIN: Record<string, Cabin> = {
   CFF1: 'ECONOMY', CFF4: 'PREMIUM_ECONOMY', CFF2: 'BUSINESS', CFF3: 'FIRST',
@@ -44,8 +44,8 @@ function ymd(yyyymmdd: string): string {
 }
 
 /** ページ埋め込みの Asw.SearchCriteriaOutput から検索条件を読む。
- *  無ければ再検索フォームの hidden 日付フィールドから読む (空席なしページ対策)。 */
-export function readSearchCriteria(): { outboundDate: string; returnDate: string; cabin: Cabin } | null {
+ *  無ければ再検索フォームの hidden フィールドから読む (空席なしページ対策)。 */
+export function readSearchCriteria(): { outboundDate: string; returnDate: string; dest: string; cabin: Cabin } | null {
   const scripts = Array.from(document.querySelectorAll('script'))
     .map((s) => s.textContent ?? '')
     .join('\n');
@@ -53,30 +53,55 @@ export function readSearchCriteria(): { outboundDate: string; returnDate: string
   if (m) {
     try {
       const sc = JSON.parse(m[1]) as {
-        requestedSegmentList?: { departureDateYyyyMMdd?: string }[];
+        requestedSegmentList?: { arrival?: { airportCode?: string }; departureDateYyyyMMdd?: string }[];
         cffCodeInput?: string;
       };
       const o = ymd(sc.requestedSegmentList?.[0]?.departureDateYyyyMMdd ?? '');
       const r = ymd(sc.requestedSegmentList?.[1]?.departureDateYyyyMMdd ?? '');
-      if (o && r) return { outboundDate: o, returnDate: r, cabin: CFF_CABIN[sc.cffCodeInput ?? ''] ?? 'ECONOMY' };
+      const dest = sc.requestedSegmentList?.[0]?.arrival?.airportCode ?? '';
+      if (o && r) return { outboundDate: o, returnDate: r, dest, cabin: CFF_CABIN[sc.cffCodeInput ?? ''] ?? 'ECONOMY' };
     } catch { /* fall through */ }
   }
-  // フォールバック: 再検索フォームの hidden 日付フィールド (空席なしページでも存在する)
+  // フォールバック: 再検索フォームの hidden フィールド (空席なしページでも存在する)
   const dep = (document.getElementById('awardDepartureDate:field') as HTMLInputElement | null)?.value ?? '';
   const ret = (document.getElementById('awardReturnDate:field') as HTMLInputElement | null)?.value ?? '';
   const cff = (document.getElementById('boardingClass') as HTMLSelectElement | null)?.value ?? '';
+  const dest = (document.getElementById('arrivalAirportCode:field') as HTMLInputElement | null)?.value ?? '';
   if (/^\d{8}$/.test(dep) && /^\d{8}$/.test(ret)) {
-    return { outboundDate: ymd(dep), returnDate: ymd(ret), cabin: CFF_CABIN[cff] ?? 'ECONOMY' };
+    return { outboundDate: ymd(dep), returnDate: ymd(ret), dest, cabin: CFF_CABIN[cff] ?? 'ECONOMY' };
   }
   return null;
 }
 
-/** 現在の結果ページを解析して行と日付を返す */
-export function parseCurrentPage(): { outboundDate: string; returnDate: string; rows: ResultRow[] } | null {
+/** 現在の結果ページを解析して行・日付・目的地を返す */
+export function parseCurrentPage(): { outboundDate: string; returnDate: string; dest: string; rows: ResultRow[] } | null {
   const ctx = readSearchCriteria();
   if (!ctx || !ctx.outboundDate || !ctx.returnDate) return null;
   const rows = parseLegacyIntlResult(document, ctx);
-  return { outboundDate: ctx.outboundDate, returnDate: ctx.returnDate, rows };
+  return { outboundDate: ctx.outboundDate, returnDate: ctx.returnDate, dest: ctx.dest, rows };
+}
+
+/**
+ * ANAページ埋め込みの空港リスト (Asw.AirportList の new s.Region/new s.Airport) を
+ * 抽出する。これによりドロップダウンを ANA と同じ選択肢にできる。
+ */
+export function extractAnaAirports(): AnaAirportList | null {
+  const scripts = Array.from(document.querySelectorAll('script'))
+    .map((s) => s.textContent ?? '')
+    .join('\n');
+  const regions: { code: string; name: string }[] = [];
+  const reRegion = /new\s+s\.Region\('([^']*)','([^']*)'/g;
+  let rm: RegExpExecArray | null;
+  while ((rm = reRegion.exec(scripts)) !== null) regions.push({ name: rm[1], code: rm[2] });
+
+  const airports: { code: string; name: string; region: string }[] = [];
+  const reAir = /new\s+s\.Airport\('([^']*)','[^']*','([^']*)','([^']*)'/g;
+  let am: RegExpExecArray | null;
+  while ((am = reAir.exec(scripts)) !== null) {
+    airports.push({ name: am[1], code: am[2], region: am[3] });
+  }
+  if (airports.length === 0) return null;
+  return { regions, airports };
 }
 
 function setInput(id: string, value: string): boolean {

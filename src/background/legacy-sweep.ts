@@ -17,8 +17,8 @@ import type {
 import { DEFAULT_THROTTLE } from '../core/types';
 
 export interface LegacyHooks {
-  /** content script へ「この日付で再検索」を指示 (ページ遷移が起きる) */
-  submit(outboundDate: string, returnDate: string): void;
+  /** content script へ「この目的地・日付で再検索」を指示 (ページ遷移が起きる) */
+  submit(job: SearchJob): void;
   onRows(rows: ResultRow[]): void;
   onProgress(progress: SweepProgress): void;
   persist(jobs: SearchJob[], state: SweepRunState, cursor: number, config: SweepConfig): void;
@@ -117,13 +117,15 @@ export class LegacySweepController {
   }
 
   /** 結果ページ読込完了の通知を受けて次へ進める */
-  onPageReady(outboundDate: string, returnDate: string, rows: ResultRow[], isResultPage: boolean): void {
+  onPageReady(outboundDate: string, returnDate: string, dest: string, rows: ResultRow[], isResultPage: boolean): void {
     if (this.state !== 'running') return;
     if (!isResultPage) return; // 検索フォーム等。結果ページのみ扱う
     const job = this.jobs[this.cursor];
     if (!job) return;
-    // 期待している日付ペアと一致するときだけ受理 (ユーザー操作や古いページを無視)
+    // 期待している目的地・日付ペアと一致するときだけ受理 (ユーザー操作や古いページを無視)
     if (outboundDate !== job.outboundDate || returnDate !== job.returnDate) return;
+    // dest は読めない場合があるため、取得できたときのみ突き合わせる
+    if (dest && job.dest && dest !== job.dest) return;
 
     this.hooks.clearTimer();
     if (rows.length > 0) {
@@ -149,7 +151,7 @@ export class LegacySweepController {
     job.attempts++;
     this.persist();
     this.emitProgress();
-    this.hooks.submit(job.outboundDate, job.returnDate);
+    this.hooks.submit(job);
     this.hooks.setTimer(JOB_TIMEOUT_MS, () => this.onTimeout());
   }
 

@@ -7,6 +7,7 @@
 
 import { buildJobMatrix } from '../core/date-matrix';
 import type {
+  AnaAirportList,
   Cabin,
   RawCapture,
   ResultRow,
@@ -33,6 +34,79 @@ const $ = <T extends HTMLElement = HTMLElement>(sel: string) =>
 
 let rows: ResultRow[] = [];
 let view: TableViewState = { ...DEFAULT_VIEW };
+
+// --- 空港リスト & 目的地(複数) -------------------------------------------
+// ANAページ未取得時の代表的フォールバック (code・名前・地域)
+const FALLBACK: AnaAirportList = {
+  regions: [
+    { code: 'JP', name: '日本' }, { code: 'AS', name: 'アジア' },
+    { code: 'OC', name: 'ハワイ・オセアニア' }, { code: 'NA', name: '北米' }, { code: 'EU', name: 'ヨーロッパ' },
+  ],
+  airports: [
+    { code: 'HND', name: '東京(羽田)', region: 'JP' }, { code: 'NRT', name: '東京(成田)', region: 'JP' },
+    { code: 'KIX', name: '大阪(関西)', region: 'JP' }, { code: 'ITM', name: '大阪(伊丹)', region: 'JP' },
+    { code: 'NGO', name: '名古屋(中部)', region: 'JP' }, { code: 'FUK', name: '福岡', region: 'JP' },
+    { code: 'CTS', name: '札幌(新千歳)', region: 'JP' }, { code: 'OKA', name: '沖縄(那覇)', region: 'JP' },
+    { code: 'ICN', name: 'ソウル(仁川)', region: 'AS' }, { code: 'TPE', name: '台北(桃園)', region: 'AS' },
+    { code: 'HKG', name: '香港', region: 'AS' }, { code: 'BKK', name: 'バンコク', region: 'AS' },
+    { code: 'SIN', name: 'シンガポール', region: 'AS' }, { code: 'MNL', name: 'マニラ', region: 'AS' },
+    { code: 'HNL', name: 'ホノルル', region: 'OC' }, { code: 'GUM', name: 'グアム', region: 'OC' },
+    { code: 'SYD', name: 'シドニー', region: 'OC' },
+    { code: 'LAX', name: 'ロサンゼルス', region: 'NA' }, { code: 'SFO', name: 'サンフランシスコ', region: 'NA' },
+    { code: 'JFK', name: 'ニューヨーク', region: 'NA' }, { code: 'YVR', name: 'バンクーバー', region: 'NA' },
+    { code: 'LHR', name: 'ロンドン', region: 'EU' }, { code: 'FRA', name: 'フランクフルト', region: 'EU' },
+    { code: 'CDG', name: 'パリ', region: 'EU' }, { code: 'MUC', name: 'ミュンヘン', region: 'EU' },
+  ],
+};
+let airportList: AnaAirportList = FALLBACK;
+const airportName = (code: string): string =>
+  airportList.airports.find((a) => a.code === code)?.name ?? code;
+let selectedDests: string[] = [];
+
+function fillSelect(sel: HTMLSelectElement, list: AnaAirportList, defaultCode: string): void {
+  const regionName = new Map(list.regions.map((r) => [r.code, r.name]));
+  const byRegion = new Map<string, typeof list.airports>();
+  for (const a of list.airports) {
+    const g = byRegion.get(a.region) ?? [];
+    g.push(a);
+    byRegion.set(a.region, g);
+  }
+  sel.innerHTML = '';
+  for (const [rc, aps] of byRegion) {
+    const og = document.createElement('optgroup');
+    og.label = regionName.get(rc) ?? rc;
+    for (const a of aps) {
+      const o = document.createElement('option');
+      o.value = a.code;
+      o.textContent = `${a.name} ${a.code}`;
+      og.appendChild(o);
+    }
+    sel.appendChild(og);
+  }
+  if (list.airports.some((a) => a.code === defaultCode)) sel.value = defaultCode;
+}
+
+function renderDestChips(): void {
+  const ul = $('#dest-chips');
+  ul.innerHTML = selectedDests
+    .map((c) => `<li class="chip" data-code="${c}">${airportName(c)} ${c}<button type="button" aria-label="削除">×</button></li>`)
+    .join('');
+  ul.querySelectorAll<HTMLButtonElement>('.chip button').forEach((b) =>
+    b.addEventListener('click', () => {
+      const code = b.parentElement?.getAttribute('data-code');
+      selectedDests = selectedDests.filter((d) => d !== code);
+      renderDestChips();
+      updateEstimate();
+    }),
+  );
+}
+
+function populateAirports(list: AnaAirportList): void {
+  airportList = list;
+  fillSelect($('#depart-select') as HTMLSelectElement, list, 'HND');
+  fillSelect($('#dest-select') as HTMLSelectElement, list, 'GUM');
+  renderDestChips();
+}
 
 // --- Port 接続 (サービスワーカー再起動で切れても自動再接続) ---------------
 let port: chrome.runtime.Port | null = null;
@@ -93,10 +167,14 @@ function readConfig(): SweepConfig {
   const weekdays = Array.from(
     form.querySelectorAll<HTMLInputElement>('input[name="wd"]:checked'),
   ).map((el) => Number(el.value) as Weekday);
+  // 目的地: チップ(複数)があればそれ、無ければ目的地セレクトの現在値
+  const destSel = ($('#dest-select') as HTMLSelectElement).value;
+  const dests = selectedDests.length > 0 ? selectedDests.slice() : (destSel ? [destSel] : []);
   return {
     type: fd.get('type') === 'domestic' ? 'domestic' : 'international',
-    depart: String(fd.get('depart') ?? '').trim().toUpperCase(),
-    dest: String(fd.get('dest') ?? '').trim().toUpperCase(),
+    depart: String(($('#depart-select') as HTMLSelectElement).value ?? '').trim().toUpperCase(),
+    dest: dests[0] ?? '',
+    dests,
     periodStart: String(fd.get('periodStart') ?? ''),
     periodEnd: String(fd.get('periodEnd') ?? ''),
     weekdays,
@@ -121,7 +199,8 @@ function updateEstimate(): void {
     const t = cfg.throttle ?? DEFAULT_THROTTLE;
     const perJob = t.baseMs + t.spreadMs / 2 + 5000;
     const mins = Math.ceil((jobs.length * perJob) / 60000);
-    let note = `検索 ${jobs.length} 件 / 推定 約${mins}分`;
+    const nDest = cfg.dests?.length ?? 1;
+    let note = `目的地 ${nDest} / 検索 ${jobs.length} 件 / 推定 約${mins}分`;
     if (jobs.length > 40) note += ' ⚠ 件数が多いとbot検知リスクが上がります';
     $('#estimate').textContent = note;
   } catch (e) {
@@ -130,11 +209,38 @@ function updateEstimate(): void {
 }
 $('#sweep-form').addEventListener('input', updateEstimate);
 
+// --- 空港リスト初期化 (ANAページから取り込んだものがあれば使う) -----------
+populateAirports(FALLBACK);
+chrome.storage.local.get('anaAirports').then((v) => {
+  const list = v.anaAirports as AnaAirportList | undefined;
+  if (list && list.airports?.length) {
+    populateAirports(list);
+    ($('#airport-note') as HTMLElement).textContent = `ANAの全空港リスト(${list.airports.length}件)を使用中。`;
+  }
+});
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes.anaAirports?.newValue) {
+    const list = changes.anaAirports.newValue as AnaAirportList;
+    populateAirports(list);
+    ($('#airport-note') as HTMLElement).textContent = `ANAの全空港リスト(${list.airports.length}件)を使用中。`;
+  }
+});
+
+// --- 目的地の追加 (複数指定) ---------------------------------------------
+$('#btn-add-dest').addEventListener('click', () => {
+  const code = ($('#dest-select') as HTMLSelectElement).value;
+  if (code && !selectedDests.includes(code)) {
+    selectedDests.push(code);
+    renderDestChips();
+    updateEstimate();
+  }
+});
+
 // --- 操作ボタン ----------------------------------------------------------
 $('#sweep-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const cfg = readConfig();
-  if (!cfg.depart || !cfg.dest) return alert('出発空港と目的地を入力してください');
+  if (!cfg.depart || !cfg.dest) return alert('出発空港と目的地を選択してください');
   rows = [];
   renderResults();
   sendSw({ type: 'START_SWEEP', config: cfg });

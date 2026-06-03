@@ -11,14 +11,28 @@ export type Cabin = 'ECONOMY' | 'PREMIUM_ECONOMY' | 'BUSINESS' | 'FIRST';
 /** 0 = 日曜 ... 6 = 土曜 (JavaScript Date.getDay() 準拠) */
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
+// --- 空港リスト (ANAページから取り込む) ----------------------------------
+
+export interface AnaAirport {
+  code: string;
+  name: string; // 日本語名
+  region: string; // 地域コード
+}
+export interface AnaAirportList {
+  regions: { code: string; name: string }[];
+  airports: AnaAirport[];
+}
+
 // --- 検索条件 -------------------------------------------------------------
 
 export interface SweepConfig {
   type: AwardType;
   /** 出発空港コード (例: "HND") */
   depart: string;
-  /** 目的地空港コード (例: "HNL") */
+  /** 目的地空港コード (例: "HNL")。単一指定または dests の先頭 */
   dest: string;
+  /** 複数の目的地空港コード。指定時は dest×日付で全組合せをスイープ */
+  dests?: string[];
   /** 検索対象期間の開始日 YYYY-MM-DD (この日の出発便から) */
   periodStart: string;
   /** 検索対象期間の終了日 YYYY-MM-DD (この日の出発便まで) */
@@ -66,6 +80,8 @@ export interface SearchJob {
   outboundDate: string;
   /** 復路出発日 YYYY-MM-DD */
   returnDate: string;
+  /** 目的地空港コード (複数目的地スイープ用) */
+  dest: string;
   status: JobStatus;
   /** 失敗時の理由 */
   failureReason?: string;
@@ -144,8 +160,8 @@ export type ContentToSwMessage =
   | { type: 'CAPTURE'; capture: RawCapture }
   | { type: 'PAGE_READY'; url: string }
   | { type: 'CHALLENGE_DETECTED'; reason: string }
-  // 旧国際線エンジン: 結果ページ読込完了。現在の日付ペアと解析済み行を報告
-  | { type: 'LEGACY_PAGE_READY'; outboundDate: string; returnDate: string; rows: ResultRow[]; isResultPage: boolean };
+  // 旧国際線エンジン: 結果ページ読込完了。現在の日付ペア・目的地と解析済み行を報告
+  | { type: 'LEGACY_PAGE_READY'; outboundDate: string; returnDate: string; dest: string; rows: ResultRow[]; isResultPage: boolean };
 
 /** service-worker → content */
 export type SwToContentMessage =

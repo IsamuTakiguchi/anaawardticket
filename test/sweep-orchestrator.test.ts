@@ -72,7 +72,7 @@ describe('SweepOrchestrator', () => {
     await orch.run();
 
     expect(orch.getState()).toBe('done');
-    expect(searchOrder).toEqual(['2026-09-10_2026-09-17', '2026-09-11_2026-09-18']);
+    expect(searchOrder).toEqual(['HNL_2026-09-10_2026-09-17', 'HNL_2026-09-11_2026-09-18']);
     expect(rows).toHaveLength(2);
     expect(rows[0].totalMiles).toBe(75000);
     expect(orch.getJobs().every((j) => j.status === 'done')).toBe(true);

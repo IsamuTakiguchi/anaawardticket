@@ -26,90 +26,17 @@
         </fieldset>
         <div class="row">
           <label>出発空港
-            <select name="depart" required>
-              <optgroup label="東京">
-                <option value="HND" selected>東京(羽田) HND</option>
-                <option value="NRT">東京(成田) NRT</option>
-                <option value="TYO">東京(全て) TYO</option>
-              </optgroup>
-              <optgroup label="大阪">
-                <option value="KIX">大阪(関西) KIX</option>
-                <option value="ITM">大阪(伊丹) ITM</option>
-                <option value="UKB">大阪(神戸) UKB</option>
-                <option value="OSA">大阪(全て) OSA</option>
-              </optgroup>
-              <optgroup label="その他 国内">
-                <option value="NGO">名古屋(中部) NGO</option>
-                <option value="FUK">福岡 FUK</option>
-                <option value="CTS">札幌(新千歳) CTS</option>
-                <option value="OKA">沖縄(那覇) OKA</option>
-                <option value="NGS">長崎 NGS</option>
-                <option value="HIJ">広島 HIJ</option>
-                <option value="KOJ">鹿児島 KOJ</option>
-                <option value="SDJ">仙台 SDJ</option>
-                <option value="KIJ">新潟 KIJ</option>
-                <option value="KMQ">小松 KMQ</option>
-              </optgroup>
-            </select>
+            <select name="depart" id="depart-select" required></select>
           </label>
-          <label>目的地
-            <select name="dest" required>
-              <optgroup label="アジア">
-                <option value="ICN">ソウル(仁川) ICN</option>
-                <option value="GMP">ソウル(金浦) GMP</option>
-                <option value="PUS">釜山 PUS</option>
-                <option value="TPE">台北(桃園) TPE</option>
-                <option value="TSA">台北(松山) TSA</option>
-                <option value="HKG">香港 HKG</option>
-                <option value="PEK">北京 PEK</option>
-                <option value="PVG">上海(浦東) PVG</option>
-                <option value="BKK">バンコク BKK</option>
-                <option value="SIN">シンガポール SIN</option>
-                <option value="KUL">クアラルンプール KUL</option>
-                <option value="MNL">マニラ MNL</option>
-                <option value="HAN">ハノイ HAN</option>
-                <option value="SGN">ホーチミン SGN</option>
-                <option value="DPS">バリ(デンパサール) DPS</option>
-                <option value="CGK">ジャカルタ CGK</option>
-                <option value="DEL">デリー DEL</option>
-                <option value="BOM">ムンバイ BOM</option>
-              </optgroup>
-              <optgroup label="ハワイ・ミクロネシア・オセアニア">
-                <option value="HNL">ホノルル HNL</option>
-                <option value="GUM" selected>グアム GUM</option>
-                <option value="SPN">サイパン SPN</option>
-                <option value="SYD">シドニー SYD</option>
-                <option value="MEL">メルボルン MEL</option>
-                <option value="PER">パース PER</option>
-              </optgroup>
-              <optgroup label="北米">
-                <option value="LAX">ロサンゼルス LAX</option>
-                <option value="SFO">サンフランシスコ SFO</option>
-                <option value="SJC">サンノゼ SJC</option>
-                <option value="SEA">シアトル SEA</option>
-                <option value="JFK">ニューヨーク JFK</option>
-                <option value="ORD">シカゴ ORD</option>
-                <option value="IAD">ワシントン IAD</option>
-                <option value="IAH">ヒューストン IAH</option>
-                <option value="YVR">バンクーバー YVR</option>
-                <option value="YYZ">トロント YYZ</option>
-                <option value="MEX">メキシコシティ MEX</option>
-              </optgroup>
-              <optgroup label="ヨーロッパ">
-                <option value="LHR">ロンドン LHR</option>
-                <option value="CDG">パリ CDG</option>
-                <option value="FRA">フランクフルト FRA</option>
-                <option value="MUC">ミュンヘン MUC</option>
-                <option value="BRU">ブリュッセル BRU</option>
-                <option value="VIE">ウィーン VIE</option>
-                <option value="IST">イスタンブール IST</option>
-                <option value="HEL">ヘルシンキ HEL</option>
-                <option value="MAD">マドリード MAD</option>
-                <option value="MXP">ミラノ MXP</option>
-              </optgroup>
-            </select>
+          <label>目的地（複数追加できます）
+            <span class="destPick">
+              <select id="dest-select"></select>
+              <button type="button" id="btn-add-dest" title="目的地リストに追加">＋追加</button>
+            </span>
           </label>
         </div>
+        <ul id="dest-chips" class="chips"></ul>
+        <p id="airport-note" class="note">空港候補は代表例です。ANAの検索ページを一度開くと、ANAと同じ全空港リストに切り替わります。</p>
         <div class="row">
           <label>期間開始 <input type="date" name="periodStart" required /></label>
           <label>期間終了 <input type="date" name="periodEnd" required /></label>

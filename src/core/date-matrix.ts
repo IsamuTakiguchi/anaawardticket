@@ -61,13 +61,14 @@ export function enumerateOutboundDates(
   return out;
 }
 
-/** 安定したジョブ ID (往路日 + 復路日) */
-export function jobId(outboundDate: string, returnDate: string): string {
-  return `${outboundDate}_${returnDate}`;
+/** 安定したジョブ ID (目的地 + 往路日 + 復路日) */
+export function jobId(dest: string, outboundDate: string, returnDate: string): string {
+  return `${dest}_${outboundDate}_${returnDate}`;
 }
 
 /**
- * SweepConfig から検索ジョブ列 (時系列順) を生成する。
+ * SweepConfig から検索ジョブ列を生成する。
+ * 目的地 (dests があれば全て、なければ dest) × 出発日 の全組合せを作り、
  * 各出発日に returnOffsetDays を加算した復路日をペアにする。
  */
 export function buildJobMatrix(config: SweepConfig): SearchJob[] {
@@ -79,14 +80,20 @@ export function buildJobMatrix(config: SweepConfig): SearchJob[] {
     config.periodEnd,
     config.weekdays,
   );
-  return outbounds.map((outboundDate) => {
-    const returnDate = addDays(outboundDate, config.returnOffsetDays);
-    return {
-      id: jobId(outboundDate, returnDate),
-      outboundDate,
-      returnDate,
-      status: 'pending',
-      attempts: 0,
-    } satisfies SearchJob;
-  });
+  const dests = config.dests && config.dests.length > 0 ? config.dests : [config.dest];
+  const jobs: SearchJob[] = [];
+  for (const dest of dests) {
+    for (const outboundDate of outbounds) {
+      const returnDate = addDays(outboundDate, config.returnOffsetDays);
+      jobs.push({
+        id: jobId(dest, outboundDate, returnDate),
+        outboundDate,
+        returnDate,
+        dest,
+        status: 'pending',
+        attempts: 0,
+      });
+    }
+  }
+  return jobs;
 }

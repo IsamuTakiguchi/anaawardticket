@@ -110,13 +110,13 @@ function makeHooks() {
 
 function makeLegacyHooks(config: SweepConfig): LegacyHooks {
   return {
-    submit: (outboundDate, returnDate) => {
+    submit: (job: SearchJob) => {
       const msg = {
         type: 'LEGACY_SUBMIT',
-        outboundDate,
-        returnDate,
+        outboundDate: job.outboundDate,
+        returnDate: job.returnDate,
         depart: config.depart,
-        dest: config.dest,
+        dest: job.dest || config.dest,
       } as const;
       sendToAnaTabs(msg); // Port が切れていても届く確実な経路
       sendToContent(msg); // 接続中の Port にも (冗長)
@@ -193,7 +193,7 @@ function handleContentMessage(msg: ContentToSwMessage): void {
       legacy?.block(msg.reason);
       break;
     case 'LEGACY_PAGE_READY':
-      legacy?.onPageReady(msg.outboundDate, msg.returnDate, msg.rows, msg.isResultPage);
+      legacy?.onPageReady(msg.outboundDate, msg.returnDate, msg.dest, msg.rows, msg.isResultPage);
       break;
     case 'PAGE_READY':
       // dev capture 状態を新しいページへ伝える

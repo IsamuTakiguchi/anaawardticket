@@ -12,7 +12,7 @@ import type {
   SwToContentMessage,
 } from '../core/types';
 import { runSearch } from './page-driver';
-import { isLegacyAwardPage, isNoResultsPage, legacySubmit, parseCurrentPage } from './legacy-driver';
+import { extractAnaAirports, isLegacyAwardPage, isNoResultsPage, legacySubmit, parseCurrentPage } from './legacy-driver';
 
 const PORT_NAME = 'ana-sweep';
 let port: chrome.runtime.Port | null = null;
@@ -86,6 +86,14 @@ function reportLegacyPageIfResult(): void {
   const onAward = isLegacyAwardPage();
   console.info('[ana-sweep] content script 稼働中:', location.href, '/ award系ページ=', onAward);
   if (!onAward) return;
+  // ANAの空港リストを取り込んで保存 (パネルのドロップダウンに利用)
+  try {
+    const list = extractAnaAirports();
+    if (list) {
+      void chrome.storage.local.set({ anaAirports: list });
+      console.info('[ana-sweep] 空港リスト取り込み', list.airports.length, '件');
+    }
+  } catch { /* noop */ }
   // 空席あり(便一覧)も空席なしページも、検索条件が読めれば報告する。
   // 空席なしページは便が無いため rows=[] となり、上位は「空席なし」として次へ進む。
   const parsed = parseCurrentPage();
@@ -94,11 +102,12 @@ function reportLegacyPageIfResult(): void {
     return;
   }
   const noResults = isNoResultsPage();
-  console.info(`[ana-sweep] ページ報告 ${parsed.outboundDate}→${parsed.returnDate} 行数=${parsed.rows.length}${noResults ? ' (空席なし)' : ''}`);
+  console.info(`[ana-sweep] ページ報告 ${parsed.dest} ${parsed.outboundDate}→${parsed.returnDate} 行数=${parsed.rows.length}${noResults ? ' (空席なし)' : ''}`);
   send({
     type: 'LEGACY_PAGE_READY',
     outboundDate: parsed.outboundDate,
     returnDate: parsed.returnDate,
+    dest: parsed.dest,
     rows: parsed.rows,
     isResultPage: true,
   });

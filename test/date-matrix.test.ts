@@ -48,9 +48,28 @@ describe('date-matrix', () => {
     };
     const jobs = buildJobMatrix(cfg);
     expect(jobs).toHaveLength(2);
-    expect(jobs[0]).toMatchObject({ outboundDate: '2026-01-30', returnDate: '2026-02-04', status: 'pending' });
+    expect(jobs[0]).toMatchObject({ outboundDate: '2026-01-30', returnDate: '2026-02-04', dest: 'HNL', status: 'pending' });
     expect(jobs[1]).toMatchObject({ outboundDate: '2026-01-31', returnDate: '2026-02-05' });
-    expect(jobs[0].id).toBe('2026-01-30_2026-02-04');
+    expect(jobs[0].id).toBe('HNL_2026-01-30_2026-02-04');
+  });
+
+  it('buildJobMatrix: 複数目的地 × 日付 の全組合せ', () => {
+    const cfg: SweepConfig = {
+      type: 'international',
+      depart: 'HND',
+      dest: 'HNL',
+      dests: ['HNL', 'GUM'],
+      periodStart: '2026-01-30',
+      periodEnd: '2026-01-31',
+      weekdays: [],
+      returnOffsetDays: 5,
+      cabin: 'BUSINESS',
+    };
+    const jobs = buildJobMatrix(cfg);
+    expect(jobs).toHaveLength(4); // 2目的地 × 2日
+    expect(jobs.filter((j) => j.dest === 'HNL')).toHaveLength(2);
+    expect(jobs.filter((j) => j.dest === 'GUM')).toHaveLength(2);
+    expect(jobs[2]).toMatchObject({ dest: 'GUM', outboundDate: '2026-01-30' });
   });
 
   it('returnOffsetDays が負だと例外', () => {
