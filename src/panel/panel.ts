@@ -63,7 +63,24 @@ const airportName = (code: string): string =>
   airportList.airports.find((a) => a.code === code)?.name ?? code;
 let selectedDests: string[] = [];
 
+/** 上部にまとめて表示する主要空港 (この順で並べる) */
+const MAJOR_CODES = [
+  'HND', 'NRT', 'KIX', 'ITM', 'NGO', 'FUK', 'CTS', 'OKA',
+  'ICN', 'GMP', 'TPE', 'TSA', 'HKG', 'PVG', 'PEK', 'BKK', 'SIN', 'KUL', 'MNL', 'HAN', 'SGN', 'DPS',
+  'HNL', 'GUM', 'SPN', 'SYD', 'MEL',
+  'LAX', 'SFO', 'SJC', 'SEA', 'JFK', 'ORD', 'IAD', 'IAH', 'YVR', 'YYZ',
+  'LHR', 'CDG', 'FRA', 'MUC', 'BRU', 'VIE', 'IST', 'HEL',
+];
+
+function optionFor(a: { code: string; name: string }): HTMLOptionElement {
+  const o = document.createElement('option');
+  o.value = a.code;
+  o.textContent = `${a.name} ${a.code}`;
+  return o;
+}
+
 function fillSelect(sel: HTMLSelectElement, list: AnaAirportList, defaultCode: string): void {
+  const byCode = new Map(list.airports.map((a) => [a.code, a]));
   const regionName = new Map(list.regions.map((r) => [r.code, r.name]));
   const byRegion = new Map<string, typeof list.airports>();
   for (const a of list.airports) {
@@ -72,18 +89,22 @@ function fillSelect(sel: HTMLSelectElement, list: AnaAirportList, defaultCode: s
     byRegion.set(a.region, g);
   }
   sel.innerHTML = '';
+  // 主要都市を先頭グループに
+  const majors = MAJOR_CODES.map((c) => byCode.get(c)).filter((a): a is (typeof list.airports)[number] => !!a);
+  if (majors.length) {
+    const og = document.createElement('optgroup');
+    og.label = '★ 主要都市';
+    for (const a of majors) og.appendChild(optionFor(a));
+    sel.appendChild(og);
+  }
+  // 続いて地域別の全空港
   for (const [rc, aps] of byRegion) {
     const og = document.createElement('optgroup');
     og.label = regionName.get(rc) ?? rc;
-    for (const a of aps) {
-      const o = document.createElement('option');
-      o.value = a.code;
-      o.textContent = `${a.name} ${a.code}`;
-      og.appendChild(o);
-    }
+    for (const a of aps) og.appendChild(optionFor(a));
     sel.appendChild(og);
   }
-  if (list.airports.some((a) => a.code === defaultCode)) sel.value = defaultCode;
+  if (byCode.has(defaultCode)) sel.value = defaultCode;
 }
 
 function renderDestChips(): void {
