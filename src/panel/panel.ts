@@ -26,6 +26,7 @@ import {
   type TableViewState,
 } from './results-table';
 import { downloadText, rowsToCsv } from './csv';
+import { parseLegacyIntlResult } from '../core/legacy-intl-parser';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) =>
   document.querySelector<T>(sel)!;
@@ -207,6 +208,40 @@ $('#btn-csv').addEventListener('click', () => {
   downloadText(`ana-award-${Date.now()}.csv`, rowsToCsv(shown), 'text/csv');
 });
 $('#btn-clear').addEventListener('click', () => sendSw({ type: 'CLEAR_RESULTS' }));
+
+// --- 現在のANA結果ページを取り込んで解析 (旧国際線エンジン) ---------------
+const CFF_CABIN: Record<string, Cabin> = {
+  CFF1: 'ECONOMY', CFF4: 'PREMIUM_ECONOMY', CFF2: 'BUSINESS', CFF3: 'FIRST',
+};
+function ymd(s: string): string {
+  return /^\d{8}$/.test(s) ? `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}` : s;
+}
+/** 結果ページHTMLから検索条件(出発日・復路日・キャビン)を推定 */
+function deriveCtx(html: string): { outboundDate: string; returnDate: string; cabin: Cabin } {
+  let outboundDate = '', returnDate = '', cabin: Cabin = 'ECONOMY';
+  const m = /Asw\.SearchCriteriaOutput\s*=\s*(\{[\s\S]*?\});/.exec(html);
+  if (m) {
+    try {
+      const sc = JSON.parse(m[1]);
+      outboundDate = ymd(sc.requestedSegmentList?.[0]?.departureDateYyyyMMdd ?? '');
+      returnDate = ymd(sc.requestedSegmentList?.[1]?.departureDateYyyyMMdd ?? '');
+      cabin = CFF_CABIN[sc.cffCodeInput] ?? 'ECONOMY';
+    } catch { /* noop */ }
+  }
+  return { outboundDate, returnDate, cabin };
+}
+$('#btn-import-page').addEventListener('click', () => {
+  chrome.runtime.sendMessage({ type: 'GET_PAGE_HTML' }, (res) => {
+    if (!res || res.error) return alert('取得失敗: ' + (res?.error ?? '不明'));
+    const doc = new DOMParser().parseFromString(res.html as string, 'text/html');
+    const parsed = parseLegacyIntlResult(doc, deriveCtx(res.html as string));
+    if (parsed.length === 0) {
+      return alert('解析できる旅程が見つかりませんでした。\n国際線特典の「往復空席照会結果」ページを開いた状態でお試しください。');
+    }
+    rows = parsed;
+    renderResults();
+  });
+});
 
 // --- Dev capture ---------------------------------------------------------
 $('#dev-toggle').addEventListener('change', (e) => {
