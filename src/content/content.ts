@@ -108,4 +108,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes.devCapture) setDevCapture(Boolean(changes.devCapture.newValue));
 });
 
+// Port に加えて one-shot メッセージ (chrome.tabs.sendMessage) も受け付ける。
+// サービスワーカー再起動で Port が切れていても指示が届くようにするため。
+chrome.runtime.onMessage.addListener((msg: SwToContentMessage, _sender, sendResponse) => {
+  if (msg && (msg.type === 'LEGACY_SUBMIT' || msg.type === 'RUN_SEARCH' || msg.type === 'SET_DEV_CAPTURE')) {
+    void handleSwMessage(msg);
+    try { sendResponse({ ok: true }); } catch { /* noop */ }
+  }
+  return false;
+});
+
 connect();

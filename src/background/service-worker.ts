@@ -70,6 +70,24 @@ function sendToContent(msg: SwToContentMessage): void {
   }
 }
 
+/**
+ * ANAのタブへ直接 one-shot メッセージを送る。Port が切れていても届くため、
+ * 旧国際線スイープの再検索指示はこちらを使う。
+ */
+function sendToAnaTabs(msg: SwToContentMessage): void {
+  chrome.tabs.query(
+    { url: ['https://aswbe-i.ana.co.jp/*', 'https://aswbe.ana.co.jp/*'] },
+    (tabs) => {
+      console.info('[ana-sweep:sw] ANAタブ数=', tabs.length, '→', msg.type);
+      for (const t of tabs) {
+        if (t.id != null) {
+          chrome.tabs.sendMessage(t.id, msg, () => void chrome.runtime.lastError);
+        }
+      }
+    },
+  );
+}
+
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 function makeHooks() {
@@ -92,8 +110,11 @@ function makeHooks() {
 
 function makeLegacyHooks(): LegacyHooks {
   return {
-    submit: (outboundDate, returnDate) =>
-      sendToContent({ type: 'LEGACY_SUBMIT', outboundDate, returnDate }),
+    submit: (outboundDate, returnDate) => {
+      const msg = { type: 'LEGACY_SUBMIT', outboundDate, returnDate } as const;
+      sendToAnaTabs(msg); // Port が切れていても届く確実な経路
+      sendToContent(msg); // 接続中の Port にも (冗長)
+    },
     onRows: (rows: ResultRow[]) => {
       void appendRows(rows);
       broadcastToPanels({ type: 'RESULT_ROWS', rows });
