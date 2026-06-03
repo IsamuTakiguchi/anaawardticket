@@ -27,7 +27,7 @@
       "world": "MAIN"
     },
     {
-      "matches": ["https://aswbe.ana.co.jp/*"],
+      "matches": ["https://aswbe.ana.co.jp/*", "https://aswbe-i.ana.co.jp/*"],
       "js": ["src/content/content.ts"],
       "run_at": "document_start",
       "world": "ISOLATED"
