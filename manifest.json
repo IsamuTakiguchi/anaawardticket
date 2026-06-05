@@ -7,7 +7,7 @@
   "permissions": ["storage", "sidePanel", "tabs", "scripting"],
   "host_permissions": [
     "https://aswbe.ana.co.jp/*",
-    "https://*.ana.co.jp/*"
+    "https://aswbe-i.ana.co.jp/*"
   ],
   "background": {
     "service_worker": "src/background/service-worker.ts",
