@@ -7,6 +7,7 @@
 
 import { buildJobMatrix } from '../core/date-matrix';
 import type {
+  AnaAirport,
   AnaAirportList,
   Cabin,
   ResultRow,
@@ -58,12 +59,18 @@ const FALLBACK: AnaAirportList = {
   ],
 };
 let airportList: AnaAirportList = FALLBACK;
+// 都市全体(複数空港)を表す擬似コード。ANAの都市コードとして検索にも使える。
+const METRO_MAP = new Map<string, AnaAirport>([
+  ['TYO', { code: 'TYO', name: '東京(全て)', region: 'JP' }],
+  ['OSA', { code: 'OSA', name: '大阪(全て)', region: 'JP' }],
+]);
 const airportName = (code: string): string =>
-  airportList.airports.find((a) => a.code === code)?.name ?? code;
+  airportList.airports.find((a) => a.code === code)?.name ?? METRO_MAP.get(code)?.name ?? code;
 let selectedDests: string[] = [];
 
 /** 上部にまとめて表示する主要空港 (この順で並べる) */
 const MAJOR_CODES = [
+  'TYO', 'OSA',
   'HND', 'NRT', 'KIX', 'ITM', 'NGO', 'FUK', 'CTS', 'OKA',
   'ICN', 'GMP', 'TPE', 'TSA', 'HKG', 'PVG', 'PEK', 'BKK', 'SIN', 'KUL', 'MNL', 'HAN', 'SGN', 'DPS',
   'HNL', 'GUM', 'SPN', 'SYD', 'MEL',
@@ -88,8 +95,8 @@ function fillSelect(sel: HTMLSelectElement, list: AnaAirportList, defaultCode: s
     byRegion.set(a.region, g);
   }
   sel.innerHTML = '';
-  // 主要都市を先頭グループに
-  const majors = MAJOR_CODES.map((c) => byCode.get(c)).filter((a): a is (typeof list.airports)[number] => !!a);
+  // 主要都市を先頭グループに (TYO/OSA など都市全体コードはリストに無くても METRO_MAP で補う)
+  const majors = MAJOR_CODES.map((c) => byCode.get(c) ?? METRO_MAP.get(c)).filter((a): a is AnaAirport => !!a);
   if (majors.length) {
     const og = document.createElement('optgroup');
     og.label = '★ 主要都市';

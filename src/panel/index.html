@@ -46,24 +46,17 @@
           <label><input type="checkbox" name="wd" value="6" />土</label>
         </fieldset>
         <div class="row">
-          <label>帰国オフセット (日後)
-            <input type="number" name="returnOffsetDays" value="7" min="0" max="30" required />
+          <label>復路便（出発便から何日後）
+            <input type="number" name="returnOffsetDays" value="3" min="0" max="30" required />
           </label>
         </div>
         <fieldset>
-          <legend>クラス (複数選択可)</legend>
+          <legend>座席クラス (複数選択可)</legend>
           <label><input type="checkbox" name="cabin" value="ECONOMY" checked />エコノミー</label>
           <label><input type="checkbox" name="cabin" value="PREMIUM_ECONOMY" />プレエコ</label>
           <label><input type="checkbox" name="cabin" value="BUSINESS" />ビジネス</label>
           <label><input type="checkbox" name="cabin" value="FIRST" />ファースト</label>
         </fieldset>
-        <details class="advanced">
-          <summary>詳細 (検索間隔)</summary>
-          <div class="row">
-            <label>基本待機(ms) <input type="number" name="baseMs" value="4000" min="1000" /></label>
-            <label>ゆらぎ上限(ms) <input type="number" name="spreadMs" value="3000" min="0" /></label>
-          </div>
-        </details>
         <p id="estimate" class="estimate"></p>
         <p class="note">
           国際線は旧エンジンの結果ページをめくる方式です。<b>ANAで国際線特典の往復空席照会を1回行い、
@@ -71,7 +64,7 @@
           再読込され、便・必要マイル・燃油・空席が自動で一覧に追記されます（サイドパネルは開いたままに）。
         </p>
         <div class="controls">
-          <button type="submit" id="btn-start">スイープ開始</button>
+          <button type="submit" id="btn-start">検索開始</button>
           <button type="button" id="btn-pause" disabled>一時停止</button>
           <button type="button" id="btn-resume" disabled>再開</button>
           <button type="button" id="btn-cancel" disabled>中止</button>
