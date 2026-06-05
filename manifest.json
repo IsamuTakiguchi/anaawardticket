@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "ANA特典航空券スイープ検索",
+  "name": "ANAマイルナビ",
   "version": "0.1.0",
   "description": "ANA特典航空券の空席を期間・曜日・帰国オフセット条件で一括検索し、ANA/提携便・時刻・必要マイル・燃油サーチャージを一覧表示します。",
   "minimum_chrome_version": "114",
@@ -17,7 +17,12 @@
     "default_path": "src/panel/index.html"
   },
   "action": {
-    "default_title": "ANA特典航空券スイープ検索を開く"
+    "default_title": "ANAマイルナビを開く",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "content_scripts": [
     {

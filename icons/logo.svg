@@ -1,0 +1,107 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="globe" cx="42%" cy="38%" r="70%">
+      <stop offset="0%" stop-color="#5db4e6"/>
+      <stop offset="55%" stop-color="#2b8fd6"/>
+      <stop offset="100%" stop-color="#1769b3"/>
+    </radialGradient>
+    <linearGradient id="land" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#8ed64b"/>
+      <stop offset="100%" stop-color="#46a637"/>
+    </linearGradient>
+    <linearGradient id="orbitBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2f6fd0"/>
+      <stop offset="100%" stop-color="#1b4ea0"/>
+    </linearGradient>
+    <linearGradient id="orbitOrange" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffb01f"/>
+      <stop offset="100%" stop-color="#ef7d10"/>
+    </linearGradient>
+    <linearGradient id="pin" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffb01f"/>
+      <stop offset="100%" stop-color="#ef7d10"/>
+    </linearGradient>
+    <linearGradient id="plane" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#2f6fd0"/>
+      <stop offset="100%" stop-color="#16407f"/>
+    </linearGradient>
+    <radialGradient id="target" cx="50%" cy="50%" r="55%">
+      <stop offset="0%" stop-color="#eaff9e"/>
+      <stop offset="60%" stop-color="#7bd23a"/>
+      <stop offset="100%" stop-color="#3f9c2e"/>
+    </radialGradient>
+    <clipPath id="globeClip"><circle cx="232" cy="262" r="118"/></clipPath>
+  </defs>
+
+  <!-- orange orbit (back/bottom) -->
+  <path d="M150 300
+           C 90 360, 120 430, 250 452
+           C 400 478, 470 412, 452 350
+           C 430 410, 330 430, 235 415
+           C 150 402, 120 350, 150 300 Z"
+        fill="url(#orbitOrange)"/>
+
+  <!-- blue orbit ring -->
+  <path d="M210 150
+           C 70 175, 70 360, 235 392
+           C 360 416, 452 360, 452 300
+           C 430 356, 330 372, 245 356
+           C 120 333, 110 215, 215 178
+           C 240 169, 255 166, 275 167
+           C 250 153, 230 148, 210 150 Z"
+        fill="url(#orbitBlue)"/>
+
+  <!-- globe -->
+  <circle cx="232" cy="262" r="118" fill="url(#globe)"/>
+  <g clip-path="url(#globeClip)">
+    <!-- ocean meridians -->
+    <g stroke="#9fd6f2" stroke-width="3" fill="none" opacity="0.5">
+      <path d="M232 144 C 300 200, 300 324, 232 380"/>
+      <path d="M232 144 C 164 200, 164 324, 232 380"/>
+      <line x1="114" y1="262" x2="350" y2="262"/>
+      <path d="M120 210 Q 232 240, 344 210"/>
+      <path d="M120 314 Q 232 286, 344 314"/>
+    </g>
+    <!-- left continents (Americas-like) -->
+    <path d="M150 200 C 175 195, 195 215, 188 240 C 200 255, 185 280, 200 300
+             C 190 330, 165 345, 150 360 C 140 330, 150 300, 138 280
+             C 150 255, 135 230, 150 200 Z" fill="url(#land)" opacity="0.92"/>
+    <!-- big green landmass with target -->
+    <path d="M250 165 C 300 160, 345 185, 352 230 C 360 270, 345 320, 300 350
+             C 268 372, 225 365, 210 335 C 230 320, 250 320, 258 300
+             C 245 280, 250 255, 275 248 C 255 225, 240 195, 250 165 Z"
+          fill="url(#land)"/>
+  </g>
+  <circle cx="232" cy="262" r="118" fill="none" stroke="#ffffff" stroke-width="6"/>
+
+  <!-- target reticle -->
+  <g transform="translate(300,272)">
+    <circle r="46" fill="none" stroke="#bff06a" stroke-width="5" opacity="0.85"/>
+    <circle r="30" fill="none" stroke="#a6e84f" stroke-width="5"/>
+    <line x1="-62" y1="0" x2="-12" y2="0" stroke="#cdee7a" stroke-width="5"/>
+    <line x1="12" y1="0" x2="62" y2="0" stroke="#cdee7a" stroke-width="5"/>
+    <line x1="0" y1="-62" x2="0" y2="-12" stroke="#cdee7a" stroke-width="5"/>
+    <line x1="0" y1="12" x2="0" y2="62" stroke="#cdee7a" stroke-width="5"/>
+    <circle r="9" fill="#ffffff"/>
+    <circle r="20" fill="#ffffff" opacity="0.25"/>
+  </g>
+
+  <!-- location pin -->
+  <g transform="translate(372,210)">
+    <path d="M60 70 C 60 112, 8 150, 8 150 C 8 150, -44 112, -44 70
+             C -44 34, -16 6, 8 6 C 32 6, 60 34, 60 70 Z" fill="url(#pin)"/>
+    <circle cx="8" cy="64" r="26" fill="#ffffff"/>
+  </g>
+
+  <!-- airplane -->
+  <g transform="translate(250,150) rotate(-30) scale(0.72)">
+    <path d="M 132 0
+             L 34 -13
+             L -28 -92 L -54 -92 L -8 -11
+             L -82 -15 L -104 -46 L -122 -46 L -100 -7
+             L -124 -4 L -124 4 L -100 7
+             L -122 46 L -104 46 L -82 15
+             L -8 11 L -54 92 L -28 92 L 34 13 Z"
+          fill="url(#plane)"/>
+  </g>
+</svg>

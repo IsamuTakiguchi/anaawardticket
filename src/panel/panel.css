@@ -14,7 +14,8 @@ body {
   background: var(--bg);
 }
 header { background: var(--ana-blue); color: #fff; padding: 10px 12px; }
-h1 { font-size: 15px; margin: 0 0 8px; }
+h1 { font-size: 15px; margin: 0 0 8px; display: flex; align-items: center; gap: 7px; }
+.brand-icon { width: 22px; height: 22px; vertical-align: middle; border-radius: 4px; background: #fff; }
 .tabs { display: flex; gap: 4px; }
 .tabs button {
   background: var(--ana-blue-d); color: #cfe0f2; border: 0;
