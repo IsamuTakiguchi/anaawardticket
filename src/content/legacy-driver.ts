@@ -141,16 +141,49 @@ function setInputFlexible(ids: string[], substrs: RegExp, value: string): boolea
   return false;
 }
 
-function setSelectFlexible(ids: string[], substrs: RegExp, value: string): boolean {
-  for (const id of ids) {
-    const el = document.getElementById(id) as HTMLSelectElement | null;
-    if (el) { setElValue(el, value); return true; }
+/** キャビンを表示テキストで判定するためのキーワード */
+const CABIN_KEYWORD: Record<Cabin, RegExp> = {
+  ECONOMY: /エコノミー|普通席|エコノミ/,
+  PREMIUM_ECONOMY: /プレミアム\s*エコノミー|プレエコ/,
+  BUSINESS: /ビジネス/,
+  FIRST: /ファースト/,
+};
+
+/**
+ * クラス(搭乗クラス)のプルダウンを選択する。値コードはページにより異なるため、
+ * ①option値が CFF コードに一致 ②表示テキストがキャビン名に一致 の順で探す。
+ * 一致する選択肢が無い場合はユーザーの既存選択を維持する (誤った値で未選択化して
+ * 「プルダウンから選択してください」検証エラーになるのを防ぐ)。
+ */
+function setCabinSelect(cabin: Cabin, tag: string): boolean {
+  const sel =
+    (document.getElementById('boardingClass') as HTMLSelectElement | null) ??
+    Array.from(document.querySelectorAll<HTMLSelectElement>('select')).find((s) =>
+      /boardingclass|cffcode|cabin|class|seatclass|搭乗/i.test(s.id + ' ' + (s.getAttribute('name') ?? '')),
+    ) ??
+    null;
+  if (!sel) {
+    console.warn(`${tag} クラスのプルダウンが見つかりません`);
+    return false;
   }
-  const el = Array.from(document.querySelectorAll<HTMLSelectElement>('select')).find(
-    (e) => substrs.test(e.id) || substrs.test(e.getAttribute('name') ?? ''),
-  );
-  if (el) { setElValue(el, value); return true; }
-  return false;
+  const options = Array.from(sel.options);
+  console.info(`${tag} クラス選択肢:`, options.map((o) => `${o.value}=${o.text.trim()}`));
+  const cff = CABIN_CFF[cabin];
+  const kw = CABIN_KEYWORD[cabin];
+  // プレミアムエコノミーを誤ってエコノミーに合わせないよう、ECONOMYは「プレミアム」を除外
+  const matchText = (o: HTMLOptionElement) =>
+    kw.test(o.text) && (cabin !== 'ECONOMY' || !/プレミアム/.test(o.text));
+  const opt =
+    options.find((o) => o.value === cff) ??
+    options.find((o) => matchText(o));
+  if (!opt) {
+    console.warn(`${tag} 「${cabin}」に一致する選択肢が無いため既存選択を維持します`);
+    return false;
+  }
+  sel.selectedIndex = opt.index;
+  setElValue(sel, opt.value);
+  console.info(`${tag} クラス選択 ${cabin} → 「${opt.text.trim()}」(value=${opt.value})`);
+  return true;
 }
 
 /** ドキュメント全体から「検索する」ボタン/リンクを探してクリックする。 */
@@ -214,13 +247,10 @@ export function legacySubmit(
     const ok = setInputFlexible(['arrivalAirportCode:field'], /arrivalairport/i, dest);
     console.info(`${TAG} 目的地投入 ${dest} (field=${ok})`);
   }
-  // キャビン (特典種別 CFF コード) も指定されていれば更新
+  // キャビン (搭乗クラス) は表示テキストで一致する選択肢を選ぶ。
+  // 一致しなければ既存選択を維持し、検証エラーを避ける。
   if (cabin) {
-    const cff = CABIN_CFF[cabin];
-    const ok =
-      setInputFlexible(['boardingClass'], /boardingclass|cffcode|cabin/i, cff) ||
-      setSelectFlexible(['boardingClass'], /boardingclass|cffcode|cabin/i, cff);
-    console.info(`${TAG} クラス投入 ${cabin}/${cff} (field=${ok})`);
+    setCabinSelect(cabin, TAG);
   }
   console.info(`${TAG} 日付投入 out=${out} ret=${ret} (depField=${okOut}, retField=${okRet})`);
   if (!okOut || !okRet) {
